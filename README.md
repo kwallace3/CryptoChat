@@ -1,1 +1,1 @@
-# CryptoChat
+# CryptoChat™
