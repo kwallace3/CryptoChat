@@ -62,12 +62,20 @@ def format_message(size, data):
     return message
 
 
-class Connection:
-    connection_list = []
+class Client:
+    client_list = []
 
     def __init__(self, connection):
         self.account = ''
-        self.connection_list.append(self)
+        self.client_list.append(self)
+        self.connection = connection
+
+    @staticmethod
+    def get_client(connection):
+        for i in range(len(Client.client_list)):
+            if Client.client_list[i].connection == connection:
+                return Client.client_list[i]
+        return
 
 
 class Account:
@@ -108,11 +116,19 @@ class Account:
             return
 
         Account(username, email, password)
+
         connection.sendall(format_message([0, 1, 2], ["createaccount", "success", username]).encode())
 
     @staticmethod
     def login(connection, username, password):
-        pass
+        for i in range(len(Account.account_list)):
+            if Account.account_list[i].username == username:
+                if Account.account_list[i].password == password:
+                    Client.get_client(connection).account = Account.account_list[i]
+                    Account.account_list[i].loggedin = True
+                    connection.sendall(format_message([0, 1, 2], ["login", "success", username]).encode())
+                else:
+                    connection.sendall(format_message([0, 1, 2], ["login", "failure", username]).encode())
 
     def logout(self, connection, username):
         pass
@@ -145,7 +161,7 @@ def handle_message(connection, message):
 def handle_client(connection):
     data = connection.recv(1024).decode()
     print("Received from new connection:" + data)
-    Connection(connection)
+    Client(connection)
     handle_message(connection, data)
     while True:
         data = connection.recv(1024).decode()
