@@ -1,5 +1,6 @@
 import _thread
 import socket
+import math
 
 myHost = 'localhost'
 myPort = 4995
@@ -10,17 +11,20 @@ sockobj.bind((myHost, myPort))
 sockobj.listen(16)
 
 
-def splitmessage(message):
-    split = [""]
+# Connections connected to the client
+
+
+def split_message(message):
+    split = []
     # Remove the message before the first '%' and save it as split[0]. This is the message header
     for i in range(len(message)):
         if message[i] == '%':
-            split[0] = message[:i]
+            split.append(message[:i])
             message = message[i + 1:]
             break
 
     # Checks the header was successfully taken off, if not return empty split
-    if split == [""]:
+    if len(split) == 0:
         return split
 
     x = 1
@@ -44,25 +48,87 @@ def splitmessage(message):
     return split
 
 
+def format_message(size, data):
+    message = data[0]
+    for i in range(1, len(data)):
+        message += '%'
+        length = len(data[i])
+        digits = int(math.log10(length)) + 1
+        while digits < size[i]:
+            digits += 1
+            message += '0'
+        message += str(length) + data[i]
+
+    return message
+
+
+class Client:
+    client_list = []
+
+    def __init__(self, connection):
+        self.account = ''
+        self.client_list.append(self)
+        self.connection = connection
+
+    @staticmethod
+    def get_client(connection):
+        for i in range(len(Client.client_list)):
+            if Client.client_list[i].connection == connection:
+                return Client.client_list[i]
+        return
+
+
 class Account:
     account_list = []
 
-    def __init__(self, login, password):
-        pass
+    def __init__(self, username, email, password):
+        self.account_list.append(self)
+        self.username = username
+        self.email = email
+        self.password = password
+        self.loggedin = False
 
     # Check is username is in use by an existing account
     @staticmethod
-    def account_exists(username):
-        pass
+    def username_exists(username):
+        for i in range(len(Account.account_list)):
+            if Account.account_list[i].username == username:
+                return True
+        return False
+
+    @staticmethod
+    def email_exists(email):
+        for i in range(len(Account.account_list)):
+            if Account.account_list[i].email == email:
+                return True
+        return False
 
     # First checks if username is in use then makes account
     @staticmethod
     def create_account(connection, username, email, password):
-        pass
+        if Account.username_exists(username):
+            connection.sendall(
+                format_message([0, 1, 2, 2], ["createaccount", "failure", username, username + " in use"]).encode())
+            return
+        if Account.email_exists(email):
+            connection.sendall(
+                format_message([0, 1, 2, 2], ["createaccount", "failure", username, email + " in use"]).encode())
+            return
+
+        Account(username, email, password)
+
+        connection.sendall(format_message([0, 1, 2], ["createaccount", "success", username]).encode())
 
     @staticmethod
     def login(connection, username, password):
-        pass
+        for i in range(len(Account.account_list)):
+            if Account.account_list[i].username == username:
+                if Account.account_list[i].password == password:
+                    Client.get_client(connection).account = Account.account_list[i]
+                    Account.account_list[i].loggedin = True
+                    connection.sendall(format_message([0, 1, 2], ["login", "success", username]).encode())
+                else:
+                    connection.sendall(format_message([0, 1, 2], ["login", "failure", username]).encode())
 
     def logout(self, connection, username):
         pass
@@ -77,26 +143,29 @@ def send_message(sender, receiver, message):
 
 # Finds action message wants to takes and evokes method
 def handle_message(connection, message):
-    split = splitmessage(message)
+    split = split_message(message)
     print(split)
-    if len(split) == 1:
-        connection.sendall("error%24Incorrect Message Format".encode())
+    if len(split) == 0:
+        connection.sendall(format_message([0, 2], ["error", "Incorrect Message Format"]).encode())
         return
     if split[0] == "createaccount" and len(split) >= 4:
         Account.create_account(connection, split[1], split[2], split[3])
     elif split[0] == "login" and len(split) >= 3:
-        Account.create_login(connection, split[1], split[2])
+        Account.login(connection, split[1], split[2])
     elif split[0] == "logout" and len(split) >= 2:
-        Account.create_logout(connection, split[1])
+        Account.logout(connection, split[1])
     else:
-        connection.sendall("error%24Incorrect Message Format".encode())
+        connection.sendall(format_message([0, 2], ["error", "Incorrect Message Format"]).encode())
 
 
 def handle_client(connection):
     data = connection.recv(1024).decode()
     print("Received from new connection:" + data)
+    Client(connection)
     handle_message(connection, data)
-    connection.sendall(data.encode())
+    while True:
+        data = connection.recv(1024).decode()
+        handle_message(connection, data)
     connection.close()
 
 
