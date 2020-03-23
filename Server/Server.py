@@ -75,7 +75,7 @@ class Client:
         for i in range(len(Client.client_list)):
             if Client.client_list[i].connection == connection:
                 return Client.client_list[i]
-        return
+        return None
 
     @staticmethod
     def remove_client(connection):
@@ -137,6 +137,7 @@ class Account:
                     Client.get_client(connection).account = Account.account_list[i]
                     Account.account_list[i].loggedin = True
                     Account.account_list[i].connection = connection
+                    print(str(Account.account_list[i].connection))
                     connection.sendall(format_message([0, 1, 2], ["login", "success", username]).encode())
                 else:
                     connection.sendall(format_message([0, 1, 2], ["login", "failure", username]).encode())
@@ -157,8 +158,26 @@ class Account:
         return
 
 
-def send_message(connection, receiver, message):
-    pass
+# Send a message between connection and reciever with timestamp and message
+# Checks if connection is logged in and if the reciever has an account
+def send_message(connection, receiver, timestamp, message):
+    account = Client.get_client(connection).account
+    if account.loggedin is None:
+        connection.sendall(
+            format_message([0, 1, 2, 2], ["senddirectmessage", "failure", receiver, "Not logged in"]).encode())
+        return
+    receiver_account = Account.get_account(receiver)
+    if receiver_account is None:
+        connection.sendall(
+            format_message([0, 1, 2, 2], ["senddirectmessage", "failure", receiver, "User not found"]).encode())
+        return
+    if receiver_account.connection is None or receiver_account.loggedin is False:
+        connection.sendall(
+            format_message([0, 1, 2, 2], ["senddirectmessage", "failure", receiver, "Reciever not logged in"]).encode())
+        return
+    receiver_account.connection.sendall(format_message([0, 2, 2, 3], ["receivedirectmessage", account.username, timestamp, message]).encode())
+
+    connection.sendall(format_message([0, 1, 2], ["senddirectmessage", "success", receiver]).encode())
 
 
 # Finds action message wants to takes and evokes method
@@ -180,6 +199,8 @@ def handle_message(connection, message):
         else:
             connection.sendall(
                 format_message([0, 1, 2, 2], ["checkuserexists", "failure", split[1], "User not found"]).encode())
+    elif split[0] == "senddirectmessage" and len(split) >= 3:
+        send_message(connection, split[1], split[2], split[3])
     else:
         connection.sendall(format_message([0, 2], ["error", "Incorrect Message Format"]).encode())
 
@@ -187,22 +208,24 @@ def handle_message(connection, message):
 def handle_client(connection):
     print("New Connection" + str(connection))
     try:
+        Client(connection)
         data = connection.recv(1024).decode()
     except ConnectionResetError or ConnectionAbortedError:
         print("Connection Closed" + str(connection))
-        return
-    print(data)
-    client = Client(connection)
-    handle_message(connection, data)
-    try:
-        while True:
-            data = connection.recv(1024).decode()
-            print(data)
-            handle_message(connection, data)
-    except ConnectionResetError or ConnectionAbortedError:
-        Client.remove_client(connection)
-        print("Connection Closed" + str(connection))
         connection.close()
+    print(data)
+    handle_message(connection, data)
+    while True:
+        try:
+            data = connection.recv(1024).decode()
+        except ConnectionResetError or ConnectionAbortedError:
+            break
+        print(data)
+        handle_message(connection, data)
+
+    Client.remove_client(connection)
+    print("Connection Closed" + str(connection))
+    connection.close()
 
 
 # listen until process killed
