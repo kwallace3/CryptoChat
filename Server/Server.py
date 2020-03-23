@@ -2,8 +2,9 @@ import _thread
 import socket
 import math
 
-# myHost = "10.150.0.2"
-myHost = "localhost"
+# myhost 10.150.0.2 is for use on the server while localhost is for testing. Comment out the one you are not using
+myHost = "10.150.0.2"
+# myHost = "localhost"
 myPort = 4995
 
 # Creates a TCP Server with Port# 6667
@@ -14,7 +15,9 @@ sockobj.listen(64)
 
 # Connections connected to the client
 
-
+# Splits message into a list with all parts separated
+# Message is received in format header%##data%##data...%##data
+# All messages are in that format besides for for the 3rd data in senddirectmessage
 def split_message(message):
     split = []
     # Remove the message before the first '%' and save it as split[0]. This is the message header
@@ -30,7 +33,7 @@ def split_message(message):
 
     x = 1
     while x > 0:
-        print(message)
+        # Checks to see if we are on the 3rd data of the senddirectmessage header
         if split[0] == 'senddirectmessage' and x == 3:
             size = 3
         else:
@@ -49,6 +52,9 @@ def split_message(message):
     return split
 
 
+# formats list size and list data into a string in the format of header%##data%##data...%##data
+# %## is the number of characters in the data with the number of # being in list size
+# example size=[0, 2] and data=[header, testdata] returns header%08testdata
 def format_message(size, data):
     message = data[0]
     for i in range(1, len(data)):
@@ -62,6 +68,7 @@ def format_message(size, data):
     return message
 
 
+# Handles connections from clients
 class Client:
     client_list = []
 
@@ -87,6 +94,7 @@ class Client:
                 Client.client_list.pop(i)
 
 
+# Handles accounts and all information in accounts
 class Account:
     account_list = []
 
@@ -106,6 +114,7 @@ class Account:
                 return True
         return False
 
+    # Check is username is in use by an existing account
     @staticmethod
     def email_exists(email):
         for i in range(len(Account.account_list)):
@@ -129,6 +138,7 @@ class Account:
 
         connection.sendall(format_message([0, 1, 2], ["createaccount", "success", username]).encode())
 
+    # Logs connection into account username and password if both username and password match
     @staticmethod
     def login(connection, username, password):
         for i in range(len(Account.account_list)):
@@ -142,6 +152,7 @@ class Account:
                 else:
                     connection.sendall(format_message([0, 1, 2], ["login", "failure", username]).encode())
 
+    # Logs connection out of account
     def logout(self, connection, username):
         Client.get_client(connection).account = None
         self.loggedin = False
@@ -150,6 +161,7 @@ class Account:
     def block_user(self, other_user):
         pass
 
+    # returns Account with matching username
     @staticmethod
     def get_account(username):
         for i in range(len(Account.account_list)):
@@ -175,7 +187,8 @@ def send_message(connection, receiver, timestamp, message):
         connection.sendall(
             format_message([0, 1, 2, 2], ["senddirectmessage", "failure", receiver, "Reciever not logged in"]).encode())
         return
-    receiver_account.connection.sendall(format_message([0, 2, 2, 3], ["receivedirectmessage", account.username, timestamp, message]).encode())
+    receiver_account.connection.sendall(
+        format_message([0, 2, 2, 3], ["receivedirectmessage", account.username, timestamp, message]).encode())
 
     connection.sendall(format_message([0, 1, 2], ["senddirectmessage", "success", receiver]).encode())
 
@@ -205,13 +218,15 @@ def handle_message(connection, message):
         connection.sendall(format_message([0, 2], ["error", "Incorrect Message Format"]).encode())
 
 
+# Is called when a new thread is created to deal with a new connection
 def handle_client(connection):
     print("New Connection" + str(connection))
+    Client(connection)
     try:
-        Client(connection)
         data = connection.recv(1024).decode()
     except ConnectionResetError or ConnectionAbortedError:
         print("Connection Closed" + str(connection))
+        Client.remove_client(connection)
         connection.close()
     print(data)
     handle_message(connection, data)
