@@ -105,6 +105,7 @@ class Account:
         self.password = password
         self.loggedin = False
         self.connection = None
+        self.blocked_users = []
 
     # Check is username is in use by an existing account
     @staticmethod
@@ -158,8 +159,26 @@ class Account:
         self.loggedin = False
         connection.sendall(format_message([0, 1, 2], ["logout", "success", username]).encode())
 
-    def block_user(self, other_user):
-        pass
+    # Returns True if self has user blocked otherwise return False
+    def is_user_blocked(self, user):
+        for i in range(len(self.blocked_users)):
+            if self.blocked_users[i] == user:
+                return True
+        return False
+
+    # self adds other_user to the list of blocked_users
+    # if other_user is already blocked or does not exist sends connection an error message
+    def block_user(self, connection, other_user):
+        if self.is_user_blocked(other_user):
+            connection.sendall(format_message([0, 1, 2, 2], ["block", "failure", self.username, other_user, "User already blocked"]).encode())
+            return False
+        if Account.username_exists(other_user):
+            self.blocked_users.append(other_user)
+            connection.sendall(format_message([0, 1, 2, 2], ["block", "success", self.username, other_user]).encode())
+            return True
+        else:
+            connection.sendall(format_message([0, 1, 2, 2], ["block", "failure", self.username, other_user, "User not found"]).encode())
+            return False
 
     # returns Account with matching username
     @staticmethod
@@ -170,10 +189,13 @@ class Account:
         return
 
 
-# Send a message between connection and reciever with timestamp and message
-# Checks if connection is logged in and if the reciever has an account
+# Send a message between connection and receiver with timestamp and message
+# Checks if connection is logged in and if the receiver has an account
 def send_message(connection, receiver, timestamp, message):
     account = Client.get_client(connection).account
+    if account.is_user_blocked(receiver):
+        connection.sendall(format_message([0, 1, 2, 2], ["senddirectmessage", "failure", receiver, "You have blocked " + receiver]).encode())
+        return
     if account.loggedin is None:
         connection.sendall(
             format_message([0, 1, 2, 2], ["senddirectmessage", "failure", receiver, "Not logged in"]).encode())
@@ -186,6 +208,9 @@ def send_message(connection, receiver, timestamp, message):
     if receiver_account.connection is None or receiver_account.loggedin is False:
         connection.sendall(
             format_message([0, 1, 2, 2], ["senddirectmessage", "failure", receiver, "Reciever not logged in"]).encode())
+        return
+    if receiver_account.is_user_blocked(account.username):
+        connection.sendall(format_message([0, 1, 2, 2], ["senddirectmessage", "failure", receiver, "You are blocked by " + receiver]).encode())
         return
     receiver_account.connection.sendall(
         format_message([0, 2, 2, 3], ["receivedirectmessage", account.username, timestamp, message]).encode())
@@ -214,6 +239,12 @@ def handle_message(connection, message):
                 format_message([0, 1, 2, 2], ["checkuserexists", "failure", split[1], "User not found"]).encode())
     elif split[0] == "senddirectmessage" and len(split) >= 3:
         send_message(connection, split[1], split[2], split[3])
+    elif split[0] == "block" and len(split) >= 2:
+        client = Client.get_client(connection)
+        if client is None:
+            connection.sendall(format_message([0, 1, 2, 2, 2], ["block", "failure", split[1], split[2], "You must be logged in"]).encode())
+        else:
+            client.account.block_user(connection, split[2])
     else:
         connection.sendall(format_message([0, 2], ["error", "Incorrect Message Format"]).encode())
 
