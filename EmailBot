@@ -14,11 +14,11 @@ smtp_server = "smtp.gmail.com"
 serv = "@gmail.com"
 
 sender_email = "cryptochat.emailbot@gmail.com"
-receiver_email = "kwallace2318@gmail.com" + serv
+receiver_email = "wallacek2@wit.edu" + serv
 password = "BrianJamesKatrinaKevin"
 
 message = MIMEMultipart("alternative")
-message["Subject"] = "multipart test"
+message["Subject"] = "Password Reset"
 message["From"] = sender_email
 message["To"] = receiver_email
 
