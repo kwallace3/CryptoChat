@@ -196,7 +196,7 @@ class Account:
 class Channel:
     channel_list = []
 
-    def __init__(self, account, channel_name, password=""):
+    def __init__(self, account, channel_name, password=None):
         self.channel_list.append(self)
         self.channel_admin_list = []
         self.channel_admin_list.append(account)
@@ -204,6 +204,18 @@ class Channel:
         self.password = password
 
         account.admin_channel.append(self)
+
+    # Create new channel with channel_name if a channel without that name does not exist
+    # If a channel already has that name return an error to the user and exit without creating a channel
+    # By default channels have no password unless one was provided
+    @staticmethod
+    def create_channel(connection, channel_name, password=None):
+        for i in range(len(Channel.channel_list)):
+            if Channel.channel_list[i].channel_name == channel_name:
+                connection.sendall(format_message([0, 1, 2, 2], ["senddirectmessage", "failure", channel_name,
+                                                                 channel_name + " already exists"]).encode())
+                return
+        Channel(connection.account, channel_name, password)
 
 
 # Send a message between connection and receiver with timestamp and message
@@ -265,6 +277,11 @@ def handle_message(connection, message):
                                                                 "You must be logged in"]).encode())
         else:
             client.account.block_user(connection, split[2])
+    elif split[0] == "createchannel" and len(split) >= 2:
+        if len(split) == 2:
+            Channel.create_channel(connection, split[1])
+        else:
+            Channel.create_channel(connection, split[1], split[2])
     else:
         connection.sendall(format_message([0, 2], ["error", "Incorrect Message Format"]).encode())
 
