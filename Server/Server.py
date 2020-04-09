@@ -3,8 +3,8 @@ import socket
 import math
 
 # myhost 10.150.0.2 is for use on the server while localhost is for testing. Comment out the one you are not using
-myHost = "10.150.0.2"
-# myHost = "localhost"
+# myHost = "10.150.0.2"
+myHost = "localhost"
 myPort = 4995
 
 # Creates a TCP Server with Port# 6667
@@ -107,6 +107,8 @@ class Account:
         self.connection = None
         self.blocked_users = []
 
+        self.admin_channel = []
+
     # Check is username is in use by an existing account
     @staticmethod
     def username_exists(username):
@@ -170,14 +172,16 @@ class Account:
     # if other_user is already blocked or does not exist sends connection an error message
     def block_user(self, connection, other_user):
         if self.is_user_blocked(other_user):
-            connection.sendall(format_message([0, 1, 2, 2], ["block", "failure", self.username, other_user, "User already blocked"]).encode())
+            connection.sendall(format_message([0, 1, 2, 2], ["block", "failure", self.username, other_user,
+                                                             "User already blocked"]).encode())
             return False
         if Account.username_exists(other_user):
             self.blocked_users.append(other_user)
             connection.sendall(format_message([0, 1, 2, 2], ["block", "success", self.username, other_user]).encode())
             return True
         else:
-            connection.sendall(format_message([0, 1, 2, 2], ["block", "failure", self.username, other_user, "User not found"]).encode())
+            connection.sendall(format_message([0, 1, 2, 2], ["block", "failure", self.username, other_user,
+                                                             "User not found"]).encode())
             return False
 
     # returns Account with matching username
@@ -189,12 +193,26 @@ class Account:
         return
 
 
+class Channel:
+    channel_list = []
+
+    def __init__(self, account, channel_name, password=""):
+        self.channel_list.append(self)
+        self.channel_admin_list = []
+        self.channel_admin_list.append(account)
+        self.channel_name = channel_name
+        self.password = password
+
+        account.admin_channel.append(self)
+
+
 # Send a message between connection and receiver with timestamp and message
 # Checks if connection is logged in and if the receiver has an account
 def send_message(connection, receiver, timestamp, message):
     account = Client.get_client(connection).account
     if account.is_user_blocked(receiver):
-        connection.sendall(format_message([0, 1, 2, 2], ["senddirectmessage", "failure", receiver, "You have blocked " + receiver]).encode())
+        connection.sendall(format_message([0, 1, 2, 2], ["senddirectmessage", "failure", receiver,
+                                                         "You have blocked " + receiver]).encode())
         return
     if account.loggedin is None:
         connection.sendall(
@@ -210,7 +228,8 @@ def send_message(connection, receiver, timestamp, message):
             format_message([0, 1, 2, 2], ["senddirectmessage", "failure", receiver, "Reciever not logged in"]).encode())
         return
     if receiver_account.is_user_blocked(account.username):
-        connection.sendall(format_message([0, 1, 2, 2], ["senddirectmessage", "failure", receiver, "You are blocked by " + receiver]).encode())
+        connection.sendall(format_message([0, 1, 2, 2], ["senddirectmessage", "failure", receiver,
+                                                         "You are blocked by " + receiver]).encode())
         return
     receiver_account.connection.sendall(
         format_message([0, 2, 2, 3], ["receivedirectmessage", account.username, timestamp, message]).encode())
@@ -242,7 +261,8 @@ def handle_message(connection, message):
     elif split[0] == "block" and len(split) >= 2:
         client = Client.get_client(connection)
         if client is None:
-            connection.sendall(format_message([0, 1, 2, 2, 2], ["block", "failure", split[1], split[2], "You must be logged in"]).encode())
+            connection.sendall(format_message([0, 1, 2, 2, 2], ["block", "failure", split[1], split[2],
+                                                                "You must be logged in"]).encode())
         else:
             client.account.block_user(connection, split[2])
     else:
@@ -259,6 +279,7 @@ def handle_client(connection):
         print("Connection Closed" + str(connection))
         Client.remove_client(connection)
         connection.close()
+        return
     print(data)
     handle_message(connection, data)
     while True:
