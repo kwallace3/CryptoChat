@@ -107,6 +107,7 @@ class Account:
         self.connection = None
         self.blocked_users = []
 
+        self.channel = []
         self.admin_channel = []
 
     # Check is username is in use by an existing account
@@ -184,6 +185,29 @@ class Account:
                                                              "User not found"]).encode())
             return False
 
+    def join_channel(self, connection, channel_name, password=None):
+        # Checks to make sure user is not already part of the requested channel
+        for i in range(len(self.channel)):
+            if self.channel[i].channel_name == channel_name:
+                connection.sendall(format_message([0, 1, 2], ["joinchannel", "failure", channel_name,
+                                                              "You have already joined this channel"]).encode())
+                return
+        for i in range(len(Channel.channel_list)):
+            # Checks if a channel in Channel.channel_list has the name of requested channel
+            if Channel.channel_list[i].channel_name == channel_name:
+                # Checks if the channel has the same password or does not require a password
+                # If this is successful user will join the channel
+                if Channel.channel_list[i].password is None or Channel.channel_list[i].password == password:
+                    self.channel.append(Channel.channel_list[i])
+                    Channel.channel_list[i].account_list.append(connection.account)
+                    return
+                else:
+                    connection.sendall(format_message([0, 1, 2], ["joinchannel", "failure", channel_name,
+                                                                  "Password for channel incorrect"]).encode())
+                    return
+        connection.sendall(format_message([0, 1, 2, 2], ["joinchannel", "failure", channel_name,
+                                                         "Channel does not exist"]).encode())
+
     # returns Account with matching username
     @staticmethod
     def get_account(username):
@@ -203,6 +227,8 @@ class Channel:
         self.channel_name = channel_name
         self.password = password
 
+        self.account_list = []
+        self.account_list.append(self)
         account.admin_channel.append(self)
 
     # Create new channel with channel_name if a channel without that name does not exist
