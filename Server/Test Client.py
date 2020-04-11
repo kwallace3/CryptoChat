@@ -5,8 +5,8 @@ import _thread
 # Not for final use
 # myhost cryptochatwit.duckdns.org is for testing the server while localhost is for testing new builds of
 # the server before deployment. Comment out the one you are not using
-serverName = "cryptochatwit.duckdns.org"
-# serverName = "localhost"
+# serverName = "cryptochatwit.duckdns.org"
+serverName = "localhost"
 serverPort = 4995
 clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 clientSocket.connect((serverName, serverPort))
