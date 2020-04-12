@@ -2,16 +2,67 @@ import java.io.*;
 import java.util.*;
 import java.net.*;
 
+// Account Class: Handles accounts and all information in accounts
+class Account {
+    static ArrayList<Account> Account_list = new ArrayList<>();
+    String username;
+    String email;
+    String password;
+    String client;
 
+    private Account(String username, String email, String password){
+        this.username = username;
+        this.email = email;
+        this.password = password;
+        Account_list.add(this);
+        this.client = null;
+    }
+
+    // Check is username is in use by an existing account
+    public static boolean username_exists(String username){
+        return false;
+    }
+
+    //Check is username is in use by an existing account
+    public static boolean email_exists(String email){
+        return false;
+    }
+
+    //First checks if username is in use then makes account
+    public static String create_account(String username, String email, String password){
+        return null;
+    }
+
+    //Logs connection into account username and password if both username and password match
+    public static String login(String username, String password){
+        return null;
+    }
+
+    //Logs connection out of account
+    public String logout (){
+        return null;
+    }
+
+    //adds other_user to the list of blocked_users
+    //if other_user is already blocked or does not exist sends connection an error message
+    public String block_user(String other_user){
+        return null;
+    }
+
+    public boolean is_user_blocked(String other_user){
+        return false;
+    }
+
+}
 // ClientHandler class
-class ClientHandler extends Thread {
+class Client extends Thread {
     final DataInputStream dis;
     final DataOutputStream dos;
     final Socket s;
 
 
     // Constructor
-    public ClientHandler(Socket s, DataInputStream dis, DataOutputStream dos) {
+    public Client(Socket s, DataInputStream dis, DataOutputStream dos) {
         this.s = s;
         this.dis = dis;
         this.dos = dos;
@@ -43,13 +94,14 @@ class ClientHandler extends Thread {
         }*/
     }
 
+    // reads the message and calls the corresponding method with relevent information
     public void handle_message(String message) {
         String[] split = split_message(message);
         if (split.length == 0)
             send_message(format_message(new int[]{0, 2}, new String[]{"error", "Incorrect Message Format"}));
-        return;
     }
 
+    //Sends a message to the Client
     public void send_message(String message) {
         try {
             dos.writeUTF(message);
@@ -144,7 +196,7 @@ public class JavaServer {
                 DataOutputStream dos = new DataOutputStream(s.getOutputStream());
 
                 // create a new thread object
-                Thread t = new ClientHandler(s, dis, dos);
+                Thread t = new Client(s, dis, dos);
 
                 // Invoking the start() method
                 t.start();
