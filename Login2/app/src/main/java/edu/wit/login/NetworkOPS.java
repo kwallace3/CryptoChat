@@ -1,6 +1,8 @@
 package edu.wit.login;
 
 import android.annotation.SuppressLint;
+import android.renderscript.ScriptGroup;
+
 import androidx.appcompat.app.AppCompatActivity;
 import java.net.*;
 import java.io.*;
@@ -18,9 +20,11 @@ public class NetworkOPS extends AppCompatActivity {
             try {
                 InetAddress address = InetAddress.getByName("cryptochatwit.duckdns.org");
                 Socket socket = new Socket(address, 4995);
+                InputStream hello = socket.getInputStream();
+                OutputStream message = socket.getOutputStream();
+                System.out.print(hello + " " +message);
+
                 return socket;
-            } catch (UnknownHostException e) {
-                e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -66,13 +70,13 @@ public class NetworkOPS extends AppCompatActivity {
         // Get a reference to the socket's output stream.
         OutputStream os = connect.getOutputStream();
         //Send data to server
-        String User = findViewById(R.id.newname).toString();
-        String pass = findViewById(R.id.txtPassword).toString();
-        String email = findViewById(R.id.txtEmail).toString();
+         username = findViewById(R.id.newname).toString();
+        Password = findViewById(R.id.txtPassword).toString();
+        Email = findViewById(R.id.txtEmail).toString();
 
-        os.write(User.getBytes());
-        os.write(pass.getBytes());
-        os.write(email.getBytes());
+        os.write(username.getBytes());
+        os.write(Password.getBytes());
+        os.write(Email.getBytes());
 
         connect.close();
     }
