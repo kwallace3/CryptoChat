@@ -102,10 +102,6 @@ class Account {
         return (Client.format_message(new int[]{0, 1, 2}, new String[]{"login", "failure", username}));
     }
 
-    //Logs connection out of account
-    public String logout (){
-        return null;
-    }
 
     //adds other_user to the list of blocked_users
     //if other_user is already blocked or does not exist sends connection an error message
@@ -168,10 +164,19 @@ class Client extends Thread {
             send_message(Account.create_account(split[1], split[2], split[3]));
         else if (split[0].equals("login") && split.length > 2) {
             String result = Account.login(split[1], split[2]);
-            if (result.substring(7, 14).equals("success")){
+            if (result.substring(7, 14).equals("success"))
                 account = Account.get_account(split[1]);
+        }
+        else if (split[0].equals("logout") && split.length > 1 ){
+            if (account == null){
+                send_message(format_message(new int[]{0, 1, 2}, new String[]{"logout", "failure", "You are not logged into " + split[1]}));
             }
-
+            else if (account.username.equals(split[1])){
+                account = null;
+            }
+            else{
+                send_message(format_message(new int[]{0, 1, 2}, new String[]{"logout", "failure", "You are not logged into " + split[1]}));
+            }
         }
         else
             send_message(format_message(new int[]{0, 2}, new String[]{"error", "Incorrect Message Format"}));
