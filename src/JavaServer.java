@@ -26,12 +26,27 @@ class Account {
         this.client = null;
     }
 
+    // Return account with matching username
+    // Return null if account does not exist
+    public static Account get_account(String username){
+        lock.readLock().lock();
+        try {
+            for (Account account : Account_list) {
+                if (account.username.equals(username))
+                    return account;
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+        return null;
+    }
+
     // Check is username is in use by an existing account
     public static boolean username_exists(String username){
         lock.readLock().lock();
         try {
-            for (int i = 0; i < Account_list.size(); i++){
-                if (Account_list.get(i).username == username)
+            for (Account account : Account_list) {
+                if (account.username.equals(username))
                     return true;
             }
         } finally {
@@ -44,8 +59,8 @@ class Account {
     public static boolean email_exists(String email){
         lock.readLock().lock();
         try {
-            for (int i = 0; i < Account_list.size(); i++){
-                if (Account_list.get(i).email == email)
+            for (Account account : Account_list) {
+                if (account.email.equals(email))
                     return true;
             }
         } finally {
@@ -70,8 +85,21 @@ class Account {
     }
 
     //Logs connection into account username and password if both username and password match
-    public static String login(String username, String password){
-        return null;
+    public static String login(String username, String password) {
+        lock.readLock().lock();
+        try {
+            for (int i = 0; i < Account_list.size(); i++) {
+                if (Account_list.get(i).username.equals(username) && Account.Account_list.get(i).password.equals(password)) {
+                    if (Account.Account_list.get(i).password.equals(password))
+                        return (Client.format_message(new int[]{0, 1, 2}, new String[]{"login", "success", username}));
+                    else
+                        return (Client.format_message(new int[]{0, 1, 2}, new String[]{"login", "failure", username}));
+                }
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+        return (Client.format_message(new int[]{0, 1, 2}, new String[]{"login", "failure", username}));
     }
 
     //Logs connection out of account
@@ -95,13 +123,14 @@ class Client extends Thread {
     final DataInputStream dis;
     final DataOutputStream dos;
     final Socket s;
-
+    Account account;
 
     // Constructor
     public Client(Socket s, DataInputStream dis, DataOutputStream dos) {
         this.s = s;
         this.dis = dis;
         this.dos = dos;
+        this.account = null;
     }
 
     @Override
@@ -134,6 +163,17 @@ class Client extends Thread {
     public void handle_message(String message) {
         String[] split = split_message(message);
         if (split.length == 0)
+            send_message(format_message(new int[]{0, 2}, new String[]{"error", "Incorrect Message Format"}));
+        else if (split[0].equals("createaccount") && split.length > 3)
+            send_message(Account.create_account(split[1], split[2], split[3]));
+        else if (split[0].equals("login") && split.length > 2) {
+            String result = Account.login(split[1], split[2]);
+            if (result.substring(7, 14).equals("success")){
+                account = Account.get_account(split[1]);
+            }
+
+        }
+        else
             send_message(format_message(new int[]{0, 2}, new String[]{"error", "Incorrect Message Format"}));
     }
 

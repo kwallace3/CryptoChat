@@ -37,5 +37,20 @@ class ServerTest {
         assertEquals(methodOutput, expectedOutput);
     }
 
+    @Test
+    void account_login(){
+        String expectedOutput = "login%7success%08TestUser";
+        String methodOutput = Account.login("TestUser", "AnAmazingPassword");
+        assertEquals(methodOutput, expectedOutput);
+
+        expectedOutput = "login%7failure%08TestUser";
+        methodOutput = Account.login("TestUser", "ATerriblePassword");
+        assertEquals(methodOutput, expectedOutput);
+
+        expectedOutput = "login%7failure%09TestUser3";
+        methodOutput = Account.login("TestUser3", "AnAmazingPassword");
+        assertEquals(methodOutput, expectedOutput);
+    }
+
 
 }
