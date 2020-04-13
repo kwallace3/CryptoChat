@@ -22,5 +22,20 @@ class ServerTest {
         assertEquals(methodOutput, expectedOutput);
     }
 
+    @Test
+    void account_creation(){
+        String expectedOutput = "createaccount%7success%08TestUser";
+        String methodOutput = Account.create_account("TestUser", "test@test.gg", "AnAmazingPassword");
+        assertEquals(methodOutput, expectedOutput);
+
+        expectedOutput = "createaccount%7failure%08TestUser%15TestUser in use";
+        methodOutput = Account.create_account("TestUser", "test@test1.gg", "AnAmazingPassword");
+        assertEquals(methodOutput, expectedOutput);
+
+        expectedOutput = "createaccount%7failure%09TestUser1%19test@test.gg in use";
+        methodOutput = Account.create_account("TestUser1", "test@test.gg", "AnAmazingPassword");
+        assertEquals(methodOutput, expectedOutput);
+    }
+
 
 }

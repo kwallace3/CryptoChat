@@ -1,9 +1,12 @@
 import java.io.*;
 import java.util.*;
 import java.net.*;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 // Account Class: Handles accounts and all information in accounts
 class Account {
+    static ReadWriteLock lock = new ReentrantReadWriteLock();
     static ArrayList<Account> Account_list = new ArrayList<>();
     String username;
     String email;
@@ -14,23 +17,56 @@ class Account {
         this.username = username;
         this.email = email;
         this.password = password;
-        Account_list.add(this);
+        lock.writeLock().lock();
+        try {
+            Account_list.add(this);
+        } finally {
+            lock.writeLock().unlock();
+        }
         this.client = null;
     }
 
     // Check is username is in use by an existing account
     public static boolean username_exists(String username){
+        lock.readLock().lock();
+        try {
+            for (int i = 0; i < Account_list.size(); i++){
+                if (Account_list.get(i).username == username)
+                    return true;
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
         return false;
     }
 
     //Check is username is in use by an existing account
     public static boolean email_exists(String email){
+        lock.readLock().lock();
+        try {
+            for (int i = 0; i < Account_list.size(); i++){
+                if (Account_list.get(i).email == email)
+                    return true;
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
         return false;
     }
 
-    //First checks if username is in use then makes account
+    //First checks if username or email is in use then makes account
     public static String create_account(String username, String email, String password){
-        return null;
+        if (username_exists(username)){
+            return(Client.format_message(new int[]{0, 1, 2, 2}, new String[]{"createaccount", "failure", username, username + " in use"}));
+        }
+        if (email_exists(email)){
+            return(Client.format_message(new int[]{0, 1, 2, 2}, new String[]{"createaccount", "failure", username, email + " in use"}));
+        }
+
+        new Account(username, email, password);
+
+        return(Client.format_message(new int[]{0, 1, 2}, new String[]{"createaccount", "success", username}));
+
     }
 
     //Logs connection into account username and password if both username and password match
