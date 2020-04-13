@@ -3,8 +3,8 @@ import socket
 import math
 
 # myhost 10.150.0.2 is for use on the server while localhost is for testing. Comment out the one you are not using
-myHost = "10.150.0.2"
-# myHost = "localhost"
+# myHost = "10.150.0.2"
+myHost = "localhost"
 myPort = 4995
 
 # Creates a TCP Server with Port# 6667
@@ -107,6 +107,9 @@ class Account:
         self.connection = None
         self.blocked_users = []
 
+        self.channel = []
+        self.admin_channel = []
+
     # Check is username is in use by an existing account
     @staticmethod
     def username_exists(username):
@@ -170,15 +173,40 @@ class Account:
     # if other_user is already blocked or does not exist sends connection an error message
     def block_user(self, connection, other_user):
         if self.is_user_blocked(other_user):
-            connection.sendall(format_message([0, 1, 2, 2], ["block", "failure", self.username, other_user, "User already blocked"]).encode())
+            connection.sendall(format_message([0, 1, 2, 2], ["block", "failure", self.username, other_user,
+                                                             "User already blocked"]).encode())
             return False
         if Account.username_exists(other_user):
             self.blocked_users.append(other_user)
             connection.sendall(format_message([0, 1, 2, 2], ["block", "success", self.username, other_user]).encode())
             return True
         else:
-            connection.sendall(format_message([0, 1, 2, 2], ["block", "failure", self.username, other_user, "User not found"]).encode())
+            connection.sendall(format_message([0, 1, 2, 2], ["block", "failure", self.username, other_user,
+                                                             "User not found"]).encode())
             return False
+
+    def join_channel(self, connection, channel_name, password=None):
+        # Checks to make sure user is not already part of the requested channel
+        for i in range(len(self.channel)):
+            if self.channel[i].channel_name == channel_name:
+                connection.sendall(format_message([0, 1, 2], ["joinchannel", "failure", channel_name,
+                                                              "You have already joined this channel"]).encode())
+                return
+        for i in range(len(Channel.channel_list)):
+            # Checks if a channel in Channel.channel_list has the name of requested channel
+            if Channel.channel_list[i].channel_name == channel_name:
+                # Checks if the channel has the same password or does not require a password
+                # If this is successful user will join the channel
+                if Channel.channel_list[i].password is None or Channel.channel_list[i].password == password:
+                    self.channel.append(Channel.channel_list[i])
+                    Channel.channel_list[i].account_list.append(connection.account)
+                    return
+                else:
+                    connection.sendall(format_message([0, 1, 2], ["joinchannel", "failure", channel_name,
+                                                                  "Password for channel incorrect"]).encode())
+                    return
+        connection.sendall(format_message([0, 1, 2, 2], ["joinchannel", "failure", channel_name,
+                                                         "Channel does not exist"]).encode())
 
     # returns Account with matching username
     @staticmethod
@@ -189,12 +217,40 @@ class Account:
         return
 
 
+class Channel:
+    channel_list = []
+
+    def __init__(self, account, channel_name, password=None):
+        self.channel_list.append(self)
+        self.channel_admin_list = []
+        self.channel_admin_list.append(account)
+        self.channel_name = channel_name
+        self.password = password
+
+        self.account_list = []
+        self.account_list.append(self)
+        account.admin_channel.append(self)
+
+    # Create new channel with channel_name if a channel without that name does not exist
+    # If a channel already has that name return an error to the user and exit without creating a channel
+    # By default channels have no password unless one was provided
+    @staticmethod
+    def create_channel(connection, channel_name, password=None):
+        for i in range(len(Channel.channel_list)):
+            if Channel.channel_list[i].channel_name == channel_name:
+                connection.sendall(format_message([0, 1, 2, 2], ["senddirectmessage", "failure", channel_name,
+                                                                 channel_name + " already exists"]).encode())
+                return
+        Channel(connection.account, channel_name, password)
+
+
 # Send a message between connection and receiver with timestamp and message
 # Checks if connection is logged in and if the receiver has an account
 def send_message(connection, receiver, timestamp, message):
     account = Client.get_client(connection).account
     if account.is_user_blocked(receiver):
-        connection.sendall(format_message([0, 1, 2, 2], ["senddirectmessage", "failure", receiver, "You have blocked " + receiver]).encode())
+        connection.sendall(format_message([0, 1, 2, 2], ["senddirectmessage", "failure", receiver,
+                                                         "You have blocked " + receiver]).encode())
         return
     if account.loggedin is None:
         connection.sendall(
@@ -210,7 +266,8 @@ def send_message(connection, receiver, timestamp, message):
             format_message([0, 1, 2, 2], ["senddirectmessage", "failure", receiver, "Reciever not logged in"]).encode())
         return
     if receiver_account.is_user_blocked(account.username):
-        connection.sendall(format_message([0, 1, 2, 2], ["senddirectmessage", "failure", receiver, "You are blocked by " + receiver]).encode())
+        connection.sendall(format_message([0, 1, 2, 2], ["senddirectmessage", "failure", receiver,
+                                                         "You are blocked by " + receiver]).encode())
         return
     receiver_account.connection.sendall(
         format_message([0, 2, 2, 3], ["receivedirectmessage", account.username, timestamp, message]).encode())
@@ -242,9 +299,15 @@ def handle_message(connection, message):
     elif split[0] == "block" and len(split) >= 2:
         client = Client.get_client(connection)
         if client is None:
-            connection.sendall(format_message([0, 1, 2, 2, 2], ["block", "failure", split[1], split[2], "You must be logged in"]).encode())
+            connection.sendall(format_message([0, 1, 2, 2, 2], ["block", "failure", split[1], split[2],
+                                                                "You must be logged in"]).encode())
         else:
             client.account.block_user(connection, split[2])
+    elif split[0] == "createchannel" and len(split) >= 2:
+        if len(split) == 2:
+            Channel.create_channel(connection, split[1])
+        else:
+            Channel.create_channel(connection, split[1], split[2])
     else:
         connection.sendall(format_message([0, 2], ["error", "Incorrect Message Format"]).encode())
 
@@ -259,6 +322,7 @@ def handle_client(connection):
         print("Connection Closed" + str(connection))
         Client.remove_client(connection)
         connection.close()
+        return
     print(data)
     handle_message(connection, data)
     while True:
