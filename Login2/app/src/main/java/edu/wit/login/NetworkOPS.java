@@ -19,24 +19,23 @@ public class NetworkOPS extends AppCompatActivity {
         executor.submit(() -> {
             try {
                 InetAddress address = InetAddress.getByName("cryptochatwit.duckdns.org");
-                Socket socket = new Socket(address, 4995);
-                InputStream hello = socket.getInputStream();
-                OutputStream message = socket.getOutputStream();
-                System.out.print(hello + " " +message);
+                SocketAddress address4995 = new InetSocketAddress(address,4995);
+                Socket socket = new Socket(address,4995);
+                socket.connect(address4995);
 
                 return socket;
             } catch (IOException e) {
                 e.printStackTrace();
+                return null;
             }
 
 
-            return null;
         });
         return null;
     }
     //gets user data
     public String[] retrieve() throws IOException {
-       Socket connect = execute();
+        Socket connect = execute();
         String[] data = new String[10];
         InputStream is = connect.getInputStream();
         InputStreamReader message = new InputStreamReader(is);
