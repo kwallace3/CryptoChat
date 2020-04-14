@@ -11,6 +11,8 @@ Here's the intro
 * Encrypted messaging
 
 ## Getting Started
+* The Client is in the master branch
+* The Server is in the Server branch
 
 ### Installation and Setup
 
