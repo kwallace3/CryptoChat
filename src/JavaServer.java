@@ -120,6 +120,7 @@ class Client extends Thread {
     final DataInputStream dis;
     final DataOutputStream dos;
     final Socket s;
+    boolean closed;
     Account account;
 
     // Constructor
@@ -128,6 +129,7 @@ class Client extends Thread {
         this.dis = dis;
         this.dos = dos;
         this.account = null;
+        this.closed = false;
         lock.writeLock().lock();
         try {
             client_list.add(this);
@@ -140,27 +142,31 @@ class Client extends Thread {
     @Override
     public void run() {
         String data;
-        while (true) {
-            send_message("Connected");
+        while (!this.closed) {
 
             // receive the answer from client
             data = receive_message();
-
-            System.out.println(data);
-            String[] split = JavaServer.split_message(data);
-            System.out.println(Arrays.toString(split));
-            handle_message(data);
-
+            if (data == null){
+                this.closed = true;
+            }
+            else {
+                System.out.println(data);
+                handle_message(data);
+            }
         }
-        /*try
-        {
-            // closing resources
-            this.dis.close();
+        try {
             this.dos.close();
-
-        }catch(IOException e){
+            this.dis.close();
+        } catch (IOException e) {
             e.printStackTrace();
-        }*/
+        }
+        lock.writeLock().lock();
+        try {
+            client_list.remove(this);
+        } finally {
+            lock.writeLock().unlock();
+        }
+        System.out.println("Client Disconnected " + s);
     }
 
     // reads the message and calls the corresponding method with relevant information
@@ -174,6 +180,7 @@ class Client extends Thread {
             String result = Account.login(split[1], split[2]);
             if (result.substring(7, 14).equals("success"))
                 account = Account.get_account(split[1]);
+            send_message(result);
         }
         else if (split[0].equals("logout") && split.length > 1 ){
             if (account == null){
@@ -181,6 +188,7 @@ class Client extends Thread {
             }
             else if (account.username.equals(split[1])){
                 account = null;
+                send_message(JavaServer.format_message(new int[]{0, 1, 2}, new String[]{"logout", "success", split[1]}));
             }
             else{
                 send_message(JavaServer.format_message(new int[]{0, 1, 2}, new String[]{"logout", "failure", "You are not logged into " + split[1]}));
@@ -188,7 +196,7 @@ class Client extends Thread {
         }
         else if (split[0].equals("senddirectmessage") && split.length > 2 && account != null){
             if(send_message(JavaServer.format_message(new int[]{0, 2, 2, 3}, new String[]{"receiveddirectmessage", account.username, split[2], split[3]}), split[1])){
-                send_message(JavaServer.format_message(new int[]{0, 1, 2}, new String[]{"senddirectmessage", "succeess", split[1]}));
+                send_message(JavaServer.format_message(new int[]{0, 1, 2}, new String[]{"senddirectmessage", "success", split[1]}));
             }
             else
                 send_message(JavaServer.format_message(new int[]{0, 1, 2}, new String[]{"senddirectmessage", "failure", split[1], "Unable to send message to " + split[1]}));
@@ -201,6 +209,7 @@ class Client extends Thread {
     public boolean send_message(String message) {
         try {
             dos.writeUTF(message);
+            dos.flush();
             return true;
         } catch (IOException e) {
             return false;
@@ -229,7 +238,7 @@ class Client extends Thread {
         try {
             return dis.readUTF();
         } catch (IOException e) {
-            return "";
+            return null;
         }
     }
 
@@ -263,8 +272,11 @@ public class JavaServer {
                 t.start();
 
             } catch (Exception e) {
-                s.close();
+                if (s != null) {
+                    s.close();
+                }
                 e.printStackTrace();
+
             }
         }
     }
@@ -304,18 +316,18 @@ public class JavaServer {
     }
 
     public static String format_message(int[] size, String[] data) {
-        String message = data[0];
+        StringBuilder message = new StringBuilder(data[0]);
         for (int i = 1; i < data.length; i++) {
-            message += '%';
+            message.append('%');
             int length = data[i].length();
             int digits = (int) Math.log10(length) + 1;
             while (digits < size[i]) {
                 digits += 1;
-                message += '0';
+                message.append('0');
             }
-            message += length + data[i];
+            message.append(length).append(data[i]);
         }
-        return message;
+        return message.toString();
     }
 
     public static String[] ListToArray(ArrayList<String> list) {

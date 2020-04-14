@@ -51,6 +51,4 @@ class ServerTest {
         methodOutput = Account.login("TestUser3", "AnAmazingPassword");
         assertEquals(methodOutput, expectedOutput);
     }
-
-
 }
