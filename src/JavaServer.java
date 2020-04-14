@@ -160,6 +160,12 @@ class Client extends Thread {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        lock.writeLock().lock();
+        try {
+            client_list.remove(this);
+        } finally {
+            lock.writeLock().unlock();
+        }
         System.out.println("Client Disconnected " + s);
     }
 
@@ -310,18 +316,18 @@ public class JavaServer {
     }
 
     public static String format_message(int[] size, String[] data) {
-        String message = data[0];
+        StringBuilder message = new StringBuilder(data[0]);
         for (int i = 1; i < data.length; i++) {
-            message += '%';
+            message.append('%');
             int length = data[i].length();
             int digits = (int) Math.log10(length) + 1;
             while (digits < size[i]) {
                 digits += 1;
-                message += '0';
+                message.append('0');
             }
-            message += length + data[i];
+            message.append(length).append(data[i]);
         }
-        return message;
+        return message.toString();
     }
 
     public static String[] ListToArray(ArrayList<String> list) {
