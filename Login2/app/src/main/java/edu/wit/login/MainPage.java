@@ -26,7 +26,7 @@ public class MainPage extends AppCompatActivity {
         setContentView(R.layout.mainpage);
 
         FloatingActionButton fab = findViewById(R.id.fab);
-        fab.setOnClickListener(view -> Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
+        fab.setOnClickListener(view -> Snackbar.make(view, "Log out", Snackbar.LENGTH_LONG)
                 .setAction("Action", null).show());
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
         NavigationView navigationView = findViewById(R.id.nav_view);
