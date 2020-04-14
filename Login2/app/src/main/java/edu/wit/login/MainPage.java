@@ -1,5 +1,7 @@
 package edu.wit.login;
+import android.content.Intent;
 import android.os.Bundle;
+import android.text.method.LinkMovementMethod;
 import android.view.View;
 import android.view.Menu;
 
@@ -26,8 +28,10 @@ public class MainPage extends AppCompatActivity {
         setContentView(R.layout.mainpage);
 
         FloatingActionButton fab = findViewById(R.id.fab);
-        fab.setOnClickListener(view -> Snackbar.make(view, "Log out", Snackbar.LENGTH_LONG)
-                .setAction("Action", null).show());
+        fab.setOnClickListener(v -> {
+            Intent intent = new Intent(MainPage.this, MainActivity.class);
+            startActivity(intent);
+        });
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
         NavigationView navigationView = findViewById(R.id.nav_view);
         // Passing each menu ID as a set of Ids because each
