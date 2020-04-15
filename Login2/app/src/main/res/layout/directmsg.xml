@@ -37,7 +37,7 @@
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_marginBottom="115dp"
-        android:text="SEND" />
+        android:text="Direct message" />
 
     <Button
         android:id="@+id/done"
