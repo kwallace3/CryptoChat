@@ -9,14 +9,15 @@ class Account {
     private static ReadWriteLock account_lock = new ReentrantReadWriteLock();
     private static ArrayList<Account> account_list = new ArrayList<>();
     private ReadWriteLock channel_lock = new ReentrantReadWriteLock();
-    private ArrayList<Account> channel_list = new ArrayList<>();
+    private ArrayList<Channel> channel_list = new ArrayList<>();
     private ReadWriteLock admin_lock = new ReentrantReadWriteLock();
-    private ArrayList<Account> admin_list = new ArrayList<>();
+    private ArrayList<Channel> admin_list = new ArrayList<>();
+    private ReadWriteLock block_lock = new ReentrantReadWriteLock();
+    private ArrayList<Account> blocked_users = new ArrayList<>();
+
     String username;
     String email;
     String password;
-    ArrayList<Account> blocked_users = new ArrayList<>();
-    private ReadWriteLock block_lock = new ReentrantReadWriteLock();
 
     private Account(String username, String email, String password){
         this.username = username;
@@ -47,9 +48,7 @@ class Account {
 
     // Check is username is in use by an existing account
     public static boolean username_exists(String username){
-        if (get_account(username) == null)
-            return false;
-        return true;
+        return get_account(username) != null;
     }
 
     //Check is username is in use by an existing account
@@ -99,7 +98,6 @@ class Account {
         return (JavaServer.format_message(new int[]{0, 1, 2}, new String[]{"login", "failure", username}));
     }
 
-
     //adds other_user to the list of blocked_users
     //if other_user is already blocked or does not exist sends connection an error message
     public String block_user(String other_user){
@@ -112,7 +110,7 @@ class Account {
         return JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"block", "success", this.username,  other_user});
     }
 
-    //adds other
+    //adds other user to blocked_user list
     public Boolean add_block_user(Account other_account){
         if (this.is_user_blocked(other_account))
             return false;
@@ -125,16 +123,45 @@ class Account {
             return true;
     }
 
-    public boolean is_user_blocked(Account other_user){
-        return this.blocked_users.contains(other_user);
+    //returns true if other_account is in blocked_users
+    public boolean is_user_blocked(Account other_account){
+        return this.blocked_users.contains(other_account);
+    }
+
+    //checks that user is in the channel then the channel is added to admin_list
+    public boolean make_user_admin(Channel channel){
+        if(!this.is_in_channel(channel))
+            return false;
+        admin_lock.writeLock().lock();
+        try {
+            admin_list.add(channel);
+        } finally {
+            admin_lock.writeLock().unlock();
+        }
+        return true;
+    }
+
+    public boolean is_in_channel(Channel channel){
+        channel_lock.readLock().lock();
+        try {
+            for (Channel c : channel_list) {
+                if (this.channel_list.contains(c))
+                    return true;
+            }
+        } finally {
+            channel_lock.readLock().unlock();
+        }
+        return false;
+    }
+
+    public boolean is_in_channel(String channel_name){
+        return this.is_in_channel(Channel.get_channel(channel_name);
     }
 }
 
 class Channel {
     private static ReadWriteLock channel_lock = new ReentrantReadWriteLock();
     private static ArrayList<Channel> channel_list = new ArrayList<>();
-    private ReadWriteLock admin_lock = new ReentrantReadWriteLock();
-    private ArrayList<Account> admin_list = new ArrayList<>();
     String channel_name;
     String password;
 
@@ -152,14 +179,32 @@ class Channel {
             channel_lock.writeLock().unlock();
         }
 
+        ReadWriteLock admin_lock = new ReentrantReadWriteLock();
         admin_lock.writeLock().lock();
         try {
+            ArrayList<Account> admin_list = new ArrayList<>();
             admin_list.add(admin);
         } finally {
             admin_lock.writeLock().unlock();
         }
     }
+
+    // Return account with matching channel_name
+    // Return null if channel does not exist
+    public static Channel get_channel(String channel_name){
+        channel_lock.readLock().lock();
+        try {
+            for (Channel channel : channel_list) {
+                if (channel.channel_name.equals(channel_name))
+                    return channel;
+            }
+        } finally {
+            channel_lock.readLock().unlock();
+        }
+        return null;
+    }
 }
+
 // ClientHandler class
 class Client extends Thread {
     static ReadWriteLock lock = new ReentrantReadWriteLock();
