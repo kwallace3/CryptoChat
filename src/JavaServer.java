@@ -165,9 +165,6 @@ class Channel {
     String channel_name;
     String password;
 
-    private Channel (Account admin, String channel_name){
-        this(admin, channel_name, null);
-    }
     private Channel (Account admin, String channel_name, String password){
         this.channel_name = channel_name;
         this.password = password;
@@ -202,6 +199,19 @@ class Channel {
             channel_lock.readLock().unlock();
         }
         return null;
+    }
+
+    // Create's a new channel if the channel_name us not in use
+    // admin is added as admin of the channel
+    public static String create_channel(Account admin, String channel_name){
+        return create_channel(admin, channel_name, null);
+    }
+    public static String create_channel(Account admin, String channel_name, String password){
+        if (get_channel(channel_name) != null){
+            return(JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"createchannel", "failure", channel_name, channel_name + " in use"}));
+        }
+        new Channel(admin, channel_name, password);
+        return(JavaServer.format_message(new int[]{0, 1, 2}, new String[]{"createchannel", "success", channel_name}));
     }
 }
 
@@ -282,9 +292,8 @@ class Client extends Thread {
                 account = null;
                 send_message(JavaServer.format_message(new int[]{0, 1, 2}, new String[]{"logout", "success", split[1]}));
             }
-            else{
+            else
                 send_message(JavaServer.format_message(new int[]{0, 1, 2}, new String[]{"logout", "failure", "You are not logged into " + split[1]}));
-            }
         }
         else if (split[0].equals("senddirectmessage") && split.length > 2 && account != null){
             if(send_message(JavaServer.format_message(new int[]{0, 2, 2, 3}, new String[]{"receiveddirectmessage", account.username, split[2], split[3]}), split[1])){
@@ -300,6 +309,15 @@ class Client extends Thread {
             else {
                 send_message(account.block_user(split[2]));
             }
+        }
+        else if (split[0].equals("createchannel")){
+            if (account == null){
+                send_message(JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"createchannel", "failure", split[2], "You must be logged in"}));
+            }
+            if (split.length == 1)
+                send_message(Channel.create_channel(account, split[1]));
+            else
+                send_message(Channel.create_channel(account, split[1], split[2]));
         }
         else
             send_message(JavaServer.format_message(new int[]{0, 2}, new String[]{"error", "Incorrect Message Format"}));
