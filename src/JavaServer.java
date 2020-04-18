@@ -6,8 +6,15 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 // Account Class: Handles accounts and all information in accounts
 class Account {
-    private static ReadWriteLock lock = new ReentrantReadWriteLock();
+    private static ReadWriteLock account_lock = new ReentrantReadWriteLock();
     private static ArrayList<Account> account_list = new ArrayList<>();
+    private ReadWriteLock channel_lock = new ReentrantReadWriteLock();
+    private ArrayList<Channel> channel_list = new ArrayList<>();
+    private ReadWriteLock admin_lock = new ReentrantReadWriteLock();
+    private ArrayList<Channel> admin_list = new ArrayList<>();
+    private ReadWriteLock block_lock = new ReentrantReadWriteLock();
+    private ArrayList<Account> blocked_users = new ArrayList<>();
+
     String username;
     String email;
     String password;
@@ -16,53 +23,44 @@ class Account {
         this.username = username;
         this.email = email;
         this.password = password;
-        lock.writeLock().lock();
+        account_lock.writeLock().lock();
         try {
             account_list.add(this);
         } finally {
-            lock.writeLock().unlock();
+            account_lock.writeLock().unlock();
         }
     }
 
     // Return account with matching username
     // Return null if account does not exist
     public static Account get_account(String username){
-        lock.readLock().lock();
+        account_lock.readLock().lock();
         try {
             for (Account account : account_list) {
                 if (account.username.equals(username))
                     return account;
             }
         } finally {
-            lock.readLock().unlock();
+            account_lock.readLock().unlock();
         }
         return null;
     }
 
     // Check is username is in use by an existing account
     public static boolean username_exists(String username){
-        lock.readLock().lock();
-        try {
-            for (Account account : account_list) {
-                if (account.username.equals(username))
-                    return true;
-            }
-        } finally {
-            lock.readLock().unlock();
-        }
-        return false;
+        return get_account(username) != null;
     }
 
     //Check is username is in use by an existing account
     public static boolean email_exists(String email){
-        lock.readLock().lock();
+        account_lock.readLock().lock();
         try {
             for (Account account : account_list) {
                 if (account.email.equals(email))
                     return true;
             }
         } finally {
-            lock.readLock().unlock();
+            account_lock.readLock().unlock();
         }
         return false;
     }
@@ -84,7 +82,7 @@ class Account {
 
     //Logs connection into account username and password if both username and password match
     public static String login(String username, String password) {
-        lock.readLock().lock();
+        account_lock.readLock().lock();
         try {
             for (int i = 0; i < account_list.size(); i++) {
                 if (account_list.get(i).username.equals(username) && Account.account_list.get(i).password.equals(password)) {
@@ -95,24 +93,128 @@ class Account {
                 }
             }
         } finally {
-            lock.readLock().unlock();
+            account_lock.readLock().unlock();
         }
         return (JavaServer.format_message(new int[]{0, 1, 2}, new String[]{"login", "failure", username}));
     }
 
-    // Send a
-
     //adds other_user to the list of blocked_users
     //if other_user is already blocked or does not exist sends connection an error message
     public String block_user(String other_user){
-        return null;
+        Account other_account = get_account(other_user);
+        if (other_account == null)
+            return JavaServer.format_message(new int[]{0, 1, 2, 2, 2}, new String[]{"block", "failure", this.username,  other_user, other_user + " does not exist"});
+        if (this.add_block_user(other_account))
+            return JavaServer.format_message(new int[]{0, 1, 2, 2, 2}, new String[]{"block", "failure", this.username,  other_user, other_user + " is already blocked"});
+        other_account.add_block_user(this);
+        return JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"block", "success", this.username,  other_user});
     }
 
-    public boolean is_user_blocked(String other_user){
+    //adds other user to blocked_user list
+    public Boolean add_block_user(Account other_account){
+        if (this.is_user_blocked(other_account))
+            return false;
+        block_lock.writeLock().lock();
+        try {
+            blocked_users.add(other_account);
+        } finally {
+            account_lock.writeLock().unlock();
+        }
+            return true;
+    }
+
+    //returns true if other_account is in blocked_users
+    public boolean is_user_blocked(Account other_account){
+        return this.blocked_users.contains(other_account);
+    }
+
+    //checks that user is in the channel then the channel is added to admin_list
+    public boolean make_user_admin(Channel channel){
+        if(!this.is_in_channel(channel))
+            return false;
+        admin_lock.writeLock().lock();
+        try {
+            admin_list.add(channel);
+        } finally {
+            admin_lock.writeLock().unlock();
+        }
+        return true;
+    }
+
+    public boolean is_in_channel(Channel channel){
+        channel_lock.readLock().lock();
+        try {
+            for (Channel c : channel_list) {
+                if (this.channel_list.contains(c))
+                    return true;
+            }
+        } finally {
+            channel_lock.readLock().unlock();
+        }
         return false;
     }
 
+    public boolean is_in_channel(String channel_name){
+        return this.is_in_channel(Channel.get_channel(channel_name);
+    }
 }
+
+class Channel {
+    private static ReadWriteLock channel_lock = new ReentrantReadWriteLock();
+    private static ArrayList<Channel> channel_list = new ArrayList<>();
+    String channel_name;
+    String password;
+
+    private Channel (Account admin, String channel_name, String password){
+        this.channel_name = channel_name;
+        this.password = password;
+
+        channel_lock.writeLock().lock();
+        try {
+            channel_list.add(this);
+        } finally {
+            channel_lock.writeLock().unlock();
+        }
+
+        ReadWriteLock admin_lock = new ReentrantReadWriteLock();
+        admin_lock.writeLock().lock();
+        try {
+            ArrayList<Account> admin_list = new ArrayList<>();
+            admin_list.add(admin);
+        } finally {
+            admin_lock.writeLock().unlock();
+        }
+    }
+
+    // Return account with matching channel_name
+    // Return null if channel does not exist
+    public static Channel get_channel(String channel_name){
+        channel_lock.readLock().lock();
+        try {
+            for (Channel channel : channel_list) {
+                if (channel.channel_name.equals(channel_name))
+                    return channel;
+            }
+        } finally {
+            channel_lock.readLock().unlock();
+        }
+        return null;
+    }
+
+    // Create's a new channel if the channel_name us not in use
+    // admin is added as admin of the channel
+    public static String create_channel(Account admin, String channel_name){
+        return create_channel(admin, channel_name, null);
+    }
+    public static String create_channel(Account admin, String channel_name, String password){
+        if (get_channel(channel_name) != null){
+            return(JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"createchannel", "failure", channel_name, channel_name + " in use"}));
+        }
+        new Channel(admin, channel_name, password);
+        return(JavaServer.format_message(new int[]{0, 1, 2}, new String[]{"createchannel", "success", channel_name}));
+    }
+}
+
 // ClientHandler class
 class Client extends Thread {
     static ReadWriteLock lock = new ReentrantReadWriteLock();
@@ -190,9 +292,8 @@ class Client extends Thread {
                 account = null;
                 send_message(JavaServer.format_message(new int[]{0, 1, 2}, new String[]{"logout", "success", split[1]}));
             }
-            else{
+            else
                 send_message(JavaServer.format_message(new int[]{0, 1, 2}, new String[]{"logout", "failure", "You are not logged into " + split[1]}));
-            }
         }
         else if (split[0].equals("senddirectmessage") && split.length > 2 && account != null){
             if(send_message(JavaServer.format_message(new int[]{0, 2, 2, 3}, new String[]{"receiveddirectmessage", account.username, split[2], split[3]}), split[1])){
@@ -201,18 +302,34 @@ class Client extends Thread {
             else
                 send_message(JavaServer.format_message(new int[]{0, 1, 2}, new String[]{"senddirectmessage", "failure", split[1], "Unable to send message to " + split[1]}));
         }
+        else if (split[0].equals("block") && split.length > 1){
+            if (account != null){
+                send_message(JavaServer.format_message(new int[]{0, 1, 2}, new String[]{"block", "failure", split[1], split[2], "You must be logged in"}));
+            }
+            else {
+                send_message(account.block_user(split[2]));
+            }
+        }
+        else if (split[0].equals("createchannel")){
+            if (account == null){
+                send_message(JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"createchannel", "failure", split[2], "You must be logged in"}));
+            }
+            if (split.length == 1)
+                send_message(Channel.create_channel(account, split[1]));
+            else
+                send_message(Channel.create_channel(account, split[1], split[2]));
+        }
         else
             send_message(JavaServer.format_message(new int[]{0, 2}, new String[]{"error", "Incorrect Message Format"}));
     }
 
     //Sends a message to the Client
-    public boolean send_message(String message) {
+    public void send_message(String message) {
         try {
             dos.writeUTF(message);
             dos.flush();
-            return true;
-        } catch (IOException e) {
-            return false;
+        } catch (IOException ignored){
+
         }
     }
 
