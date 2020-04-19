@@ -16,8 +16,8 @@ class Account {
     private ArrayList<Account> blocked_users = new ArrayList<>();
 
     String username;
-    String email;
-    String password;
+    private String email;
+    private String password;
 
     private Account(String username, String email, String password){
         this.username = username;
@@ -130,7 +130,7 @@ class Account {
 
     //checks that user is in the channel then the channel is added to admin_list
     public boolean make_user_admin(Channel channel){
-        if(!this.is_in_channel(channel))
+        if(!this.is_in_channel(channel) || channel.is_admin(this))
             return false;
         admin_lock.writeLock().lock();
         try {
@@ -151,7 +151,7 @@ class Account {
         Channel channel = Channel.get_channel(channel_name);
         if (channel == null)
             return (JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"joinchannel", "failure", channel_name, channel_name + " does not exist"}));
-        if (channel.password != password)
+        if (!channel.password.equals(password))
             return (JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"joinchannel", "failure", channel_name, channel_name + "'s password does not match"}));
         channel_lock.writeLock().lock();
         try {
@@ -188,6 +188,8 @@ class Channel {
     private static ArrayList<Channel> channel_list = new ArrayList<>();
     private ReadWriteLock account_lock = new ReentrantReadWriteLock();
     private ArrayList<Account> account_list = new ArrayList<>();
+    private ReadWriteLock admin_lock = new ReentrantReadWriteLock();
+    private ArrayList<Account> admin_list = new ArrayList<>();
     String channel_name;
     String password;
 
@@ -202,13 +204,11 @@ class Channel {
             channel_lock.writeLock().unlock();
         }
 
-        ReadWriteLock admin_lock = new ReentrantReadWriteLock();
-        admin_lock.writeLock().lock();
+        this.admin_lock.writeLock().lock();
         try {
-            ArrayList<Account> admin_list = new ArrayList<>();
-            admin_list.add(admin);
+            this.admin_list.add(admin);
         } finally {
-            admin_lock.writeLock().unlock();
+            this.admin_lock.writeLock().unlock();
         }
     }
 
@@ -248,6 +248,53 @@ class Channel {
         } finally {
             account_lock.writeLock().unlock();
         }
+    }
+
+    private boolean add_admin (Account account){
+        if (this.is_admin(account) || !this.is_in_channel(account))
+            return false;
+        account_lock.writeLock().lock();
+        try {
+            if (account.make_user_admin(this)) {
+                account_list.add(account);
+                return true;
+            }
+            return false;
+        }
+        finally {
+            account_lock.writeLock().unlock();
+        }
+    }
+
+    public boolean is_admin(Account account){
+        admin_lock.readLock().lock();
+        try {
+             return (admin_list.contains(account));
+        }
+        finally {
+            admin_lock.readLock().unlock();
+        }
+    }
+
+    public boolean is_in_channel(Account account){
+        account_lock.readLock().lock();
+        try {
+            return (account_list.contains(account));
+        }
+        finally {
+            account_lock.readLock().unlock();
+        }
+    }
+
+    // Promote account to admin
+    public String promote_user(Account account){
+        if (!this.is_in_channel(account))
+            return (JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"promoteuser", "failure", this.channel_name, account.username + " is not in " + this.channel_name}));
+        if (this.is_admin(account))
+            return (JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"promoteuser", "failure", this.channel_name, account.username + " is already am admin of " + this.channel_name}));
+        this.add_admin(account);
+        Client.send_message(JavaServer.format_message(new int[]{0, 2}, new String[]{"recievedpromoteuser", this.channel_name}), account.username);
+        return (JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"promoteuser", "success", this.channel_name, account.username}));
     }
 }
 
@@ -310,7 +357,7 @@ class Client extends Thread {
     // reads the message and calls the corresponding method with relevant information
     public void handle_message(String message) {
         String[] split = JavaServer.split_message(message);
-        if (split.length == 0)
+        if (split.length < 2)
             send_message(JavaServer.format_message(new int[]{0, 2}, new String[]{"error", "Incorrect Message Format"}));
         else if (split[0].equals("createaccount") && split.length > 3)
             send_message(Account.create_account(split[1], split[2], split[3]));
@@ -320,7 +367,7 @@ class Client extends Thread {
                 account = Account.get_account(split[1]);
             send_message(result);
         }
-        else if (split[0].equals("logout") && split.length > 1 ){
+        else if (split[0].equals("logout")){
             if (account == null){
                 send_message(JavaServer.format_message(new int[]{0, 1, 2}, new String[]{"logout", "failure", "You are not logged into " + split[1]}));
             }
@@ -338,7 +385,7 @@ class Client extends Thread {
             else
                 send_message(JavaServer.format_message(new int[]{0, 1, 2}, new String[]{"senddirectmessage", "failure", split[1], "Unable to send message to " + split[1]}));
         }
-        else if (split[0].equals("block") && split.length > 1){
+        else if (split[0].equals("block")){
             if (account != null){
                 send_message(JavaServer.format_message(new int[]{0, 1, 2}, new String[]{"block", "failure", split[1], split[2], "You must be logged in"}));
             }
@@ -350,7 +397,7 @@ class Client extends Thread {
             if (account == null){
                 send_message(JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"createchannel", "failure", split[2], "You must be logged in"}));
             }
-            if (split.length == 1)
+            if (split.length == 2)
                 send_message(Channel.create_channel(account, split[1]));
             else
                 send_message(Channel.create_channel(account, split[1], split[2]));
@@ -359,10 +406,29 @@ class Client extends Thread {
             if (account == null){
                 send_message(JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"joinchannel", "failure", split[2], "You must be logged in"}));
             }
-            if (split.length == 1)
+            if (split.length == 2)
                 send_message(account.join_channel(split[1]));
             else
                 send_message(account.join_channel(split[1], split[2]));
+        }
+        else if (split[0].equals("promoteuser") && split.length > 1){
+            Channel channel = Channel.get_channel(split[1]);
+            Account other_user = Account.get_account(split[2]);
+            if (account == null){
+                this.send_message(JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"promoteuser", "failure", split[1], "You are not logged in"}));
+            }
+            if (other_user == null){
+                this.send_message(JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"promoteuser", "failure", split[1], split[2] + " is not a user"}));
+            }
+            else if (channel == null){
+                this.send_message(JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"promoteuser", "failure", split[1], split[1], " is not a channel"}));
+            }
+            else if (!channel.is_admin(account)){
+                this.send_message(JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"promoteuser", "failure", split[1], "You must be an admin of " + split[1]}));
+            }
+            else {
+                this.send_message(channel.promote_user(other_user));
+            }
         }
         else
             send_message(JavaServer.format_message(new int[]{0, 2}, new String[]{"error", "Incorrect Message Format"}));
@@ -378,8 +444,8 @@ class Client extends Thread {
         }
     }
 
-    //Sends a message to another Client
-    public boolean send_message(String message, String username){
+    //Sends a message to another Client with username
+    public static boolean send_message(String message, String username){
         lock.readLock().lock();
         try {
             for (Client client : client_list) {
