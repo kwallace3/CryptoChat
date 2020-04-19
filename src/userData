@@ -1,31 +1,45 @@
+/**adds username, email, and password to user infomation table;
+*and message, sender, reciever, date, and time to message data table
+*/
 import java.sql.*;
 import java.time.*;
 public class userDB {
 
-
 	public void insertUserInfo(String username, String email, String password) {
 			try {
+				//connect to database
 				String dbUrl = "jdbc:mysql://104.154.41.246:3306/CRYPTOCHAT";
 				Connection connection = DriverManager.getConnection(dbUrl, "root", "CryptoChat");
+				
+				//create and execute statement to add data to user info table
 				Statement statement = connection.createStatement();
 				statement.executeUpdate("INSERT INTO users " + "VALUES ('" + username + "', '" + email + "', '" + password + "')");
-				connection.close();
-			}
-			catch (Exception exception) {
-				System.out.println(exception);
+				
+			//close connection
+			connection.close();
+		}
+		catch (Exception exception) {
+			System.out.println(exception);
 				
 			}
 		}
 		
-		public void insertMessageInfo(String message, String reciever, String sender) {
-	try {
-		LocalDate date = LocalDate.now();
-		LocalTime time = LocalTime.now();
-		String dbUrl = "jdbc:mysql://127.0.0.1/CRYPTOCHAT";
-		Connection connection = DriverManager.getConnection(dbUrl, "root", "CryptoChat");
-		Statement statement = connection.createStatement();
-		statement.executeUpdate("INSERT INTO messages (mText, reciever, sendD, sendT, sender) VALUES ('" + message + "', '" + reciever + "', '" + date + "', '" + time + "', '" + sender + "')");
-		System.out.println("done");
+	public void insertMessageInfo(String message, String reciever, String sender) {
+		try {
+		
+			//establish time and date when message is sent
+			LocalDate date = LocalDate.now();
+			LocalTime time = LocalTime.now();
+			
+			//connect to database
+			String dbUrl = "jdbc:mysql://104.154.41.246:3306/CRYPTOCHAT";
+			Connection connection = DriverManager.getConnection(dbUrl, "root", "CryptoChat");
+			
+			//create and execute statement to add data to message info table
+			Statement statement = connection.createStatement();
+			statement.executeUpdate("INSERT INTO messages (mText, reciever, sendD, sendT, sender) VALUES 
+				('" + message + "', '" + reciever + "', '" + date + "', '" + time + "', '" + sender + "')");
+		//close connection
 		connection.close();
 	}
 	catch (Exception exception) {
