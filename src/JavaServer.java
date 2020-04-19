@@ -141,11 +141,36 @@ class Account {
         return true;
     }
 
+    //Adds user to channel if channel_name and password match (null means no password)
+    public String join_channel(String channel_name){
+        return (this.join_channel(channel_name, null));
+    }
+    public String join_channel(String channel_name, String password){
+        if (this.is_in_channel(channel_name))
+            return (JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"joinchannel", "failure", channel_name, "You are already in " + channel_name}));
+        Channel channel = Channel.get_channel(channel_name);
+        if (channel == null)
+            return (JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"joinchannel", "failure", channel_name, channel_name + " does not exist"}));
+        if (channel.password != password)
+            return (JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"joinchannel", "failure", channel_name, channel_name + "'s password does not match"}));
+        channel_lock.writeLock().lock();
+        try {
+            channel_list.add(channel);
+        } finally {
+            channel_lock.writeLock().unlock();
+        }
+        channel_lock.writeLock().lock();
+        channel.add_account(this);
+        return (JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"joinchannel", "success", channel_name}));
+    }
+    //returns true if user is in channel otherwise false
     public boolean is_in_channel(Channel channel){
         channel_lock.readLock().lock();
+        if(channel == null)
+            return false;
         try {
             for (Channel c : channel_list) {
-                if (this.channel_list.contains(c))
+                if (c.channel_name.equals(channel.channel_name))
                     return true;
             }
         } finally {
@@ -153,15 +178,16 @@ class Account {
         }
         return false;
     }
-
     public boolean is_in_channel(String channel_name){
-        return this.is_in_channel(Channel.get_channel(channel_name);
+        return (this.is_in_channel(Channel.get_channel(channel_name)));
     }
 }
 
 class Channel {
     private static ReadWriteLock channel_lock = new ReentrantReadWriteLock();
     private static ArrayList<Channel> channel_list = new ArrayList<>();
+    private ReadWriteLock account_lock = new ReentrantReadWriteLock();
+    private ArrayList<Account> account_list = new ArrayList<>();
     String channel_name;
     String password;
 
@@ -212,6 +238,16 @@ class Channel {
         }
         new Channel(admin, channel_name, password);
         return(JavaServer.format_message(new int[]{0, 1, 2}, new String[]{"createchannel", "success", channel_name}));
+    }
+
+    //Adds account to channel
+    public void add_account(Account account){
+        account_lock.writeLock().lock();
+        try {
+            account_list.add(account);
+        } finally {
+            account_lock.writeLock().unlock();
+        }
     }
 }
 
@@ -318,6 +354,15 @@ class Client extends Thread {
                 send_message(Channel.create_channel(account, split[1]));
             else
                 send_message(Channel.create_channel(account, split[1], split[2]));
+        }
+        else if (split[0].equals("joinchannel")){
+            if (account == null){
+                send_message(JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"joinchannel", "failure", split[2], "You must be logged in"}));
+            }
+            if (split.length == 1)
+                send_message(account.join_channel(split[1]));
+            else
+                send_message(account.join_channel(split[1], split[2]));
         }
         else
             send_message(JavaServer.format_message(new int[]{0, 2}, new String[]{"error", "Incorrect Message Format"}));
