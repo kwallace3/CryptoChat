@@ -1,4 +1,5 @@
 import java.sql.*;
+import java.time.*;
 public class userDB {
 
 
@@ -15,4 +16,21 @@ public class userDB {
 				
 			}
 		}
+		
+		public void insertMessageInfo(String message, String reciever, String sender) {
+	try {
+		LocalDate date = LocalDate.now();
+		LocalTime time = LocalTime.now();
+		String dbUrl = "jdbc:mysql://127.0.0.1/CRYPTOCHAT";
+		Connection connection = DriverManager.getConnection(dbUrl, "root", "CryptoChat");
+		Statement statement = connection.createStatement();
+		statement.executeUpdate("INSERT INTO messages (mText, reciever, sendD, sendT, sender) VALUES ('" + message + "', '" + reciever + "', '" + date + "', '" + time + "', '" + sender + "')");
+		System.out.println("done");
+		connection.close();
 	}
+	catch (Exception exception) {
+		System.out.println(exception);
+		
+	}
+}
+}
