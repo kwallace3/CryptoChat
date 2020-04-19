@@ -4,7 +4,7 @@ public class userDB {
 
 	public void insert(String username, String email, String password) {
 			try {
-				String dbUrl = "jdbc:mysql://127.0.0.1:3306/CRYPTOCHAT";
+				String dbUrl = "jdbc:mysql://104.154.41.246:3306/CRYPTOCHAT";
 				Connection connection = DriverManager.getConnection(dbUrl, "root", "CryptoChat");
 				Statement statement = connection.createStatement();
 				statement.executeUpdate("INSERT INTO users " + "VALUES ('" + username + "', '" + email + "', '" + password + "')");
