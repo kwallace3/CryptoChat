@@ -3,6 +3,190 @@ import java.util.*;
 import java.net.*;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.sql.*;
+import java.time.*;
+
+class Database {
+    String dbUrl;
+    Connection connection;
+
+    public Database(String dbUrl, Connection connection){
+        this.dbUrl = dbUrl;
+        this.connection = connection;
+    }
+
+    public void insertUserInfo(String username, String email, String password) {
+        try {
+
+            //create and execute statement to add data to user info table
+            Statement statement = this.connection.createStatement();
+            statement.executeUpdate(String.format("INSERT INTO users VALUES ('%s', '%s', '%s')", username, email, password));
+        }
+        catch (Exception exception) {
+            System.out.println(exception);
+        }
+    }
+
+    public void insertMessageInfo(String message, String receiver, String sender) {
+        try {
+
+            //establish time and date when message is sent
+            LocalDate date = LocalDate.now();
+            LocalTime time = LocalTime.now();
+
+            //create and execute statement to add data to message info table
+            Statement statement = connection.createStatement();
+            statement.executeUpdate(String.format("INSERT INTO messages (mText, reciever, sendD, sendT, sender) VALUES ('%s', '%s', '%s', '%s', '%s')", message, receiver, date, time, sender));
+        }
+        catch (Exception exception) {
+            System.out.println(exception);
+
+        }
+    }
+
+    public void getMessage(String sender) {
+        try {
+
+            //connect to database
+            Statement statement = connection.createStatement();
+
+            //qeury
+            ResultSet result = statement.executeQuery(String.format("SELECT mText FROM messages WHERE sender = '%s';", sender));
+            ResultSetMetaData mdata = result.getMetaData();
+
+            //format and print results
+            int columnsNumber = mdata.getColumnCount();
+            while (result.next()) {
+                for (int i = 1; i <= columnsNumber; i++) {
+                    System.out.print(result.getString(i));
+                    if (i > 1) System.out.print(" | ");
+                }
+            }
+        }
+        catch (Exception exception) {
+            System.out.println(exception);
+
+        }
+    }
+
+    //get date sent from message text
+    public void getDateSent(String message) {
+        try {
+            Statement statement = connection.createStatement();
+
+            ResultSet result = statement.executeQuery(String.format("SELECT sendD FROM messages WHERE mText = '%s';", message));
+            ResultSetMetaData mdata = result.getMetaData();
+
+            int columnsNumber = mdata.getColumnCount();
+            while (result.next()) {
+                for (int i = 1; i <= columnsNumber; i++) {
+                    System.out.print(result.getString(i));
+                    if (i > 1) System.out.print(" | ");
+                }
+            }
+
+        }
+        catch (Exception exception) {
+            System.out.println(exception);
+
+        }
+    }
+
+    //get time sent from message text
+    public void getTimeSent(String message) {
+        try {
+            Statement statement = connection.createStatement();
+
+            ResultSet result = statement.executeQuery(String.format("SELECT sendT FROM messages WHERE mText = '%s';", message));
+            ResultSetMetaData mdata = result.getMetaData();
+
+            int columnsNumber = mdata.getColumnCount();
+            while (result.next()) {
+                for (int i = 1; i <= columnsNumber; i++) {
+                    System.out.print(result.getString(i));
+                    if (i > 1) System.out.print(" | ");
+                }
+            }
+
+        }
+        catch (Exception exception) {
+            System.out.println(exception);
+
+        }
+    }
+
+    //get email from username
+    public void getEmail(String user) {
+        try {
+            Statement statement = connection.createStatement();
+
+            ResultSet result = statement.executeQuery(String.format("SELECT email FROM users WHERE username = '%s';", user));
+            ResultSetMetaData mdata = result.getMetaData();
+
+            int columnsNumber = mdata.getColumnCount();
+            while (result.next()) {
+                for (int i = 1; i <= columnsNumber; i++) {
+                    System.out.print(result.getString(i));
+                    if (i > 1) System.out.print(" | ");
+                }
+            }
+        }
+        catch (Exception exception) {
+            System.out.println(exception);
+
+        }
+    }
+
+    //get username from email
+    public void getUsername(String email) {
+        try {
+            Statement statement = connection.createStatement();
+
+            ResultSet result = statement.executeQuery(String.format("SELECT username FROM users WHERE email = '%s';", email));
+            ResultSetMetaData mdata = result.getMetaData();
+            int columnsNumber = mdata.getColumnCount();
+
+            while (result.next()) {
+                for (int i = 1; i <= columnsNumber; i++) {
+                    System.out.print(result.getString(i));
+                    if (i > 1) System.out.print(" | ");
+                }
+
+            }
+
+        }
+        catch (Exception exception) {
+            System.out.println(exception);
+
+        }
+    }
+
+    //get password from username
+    public void getPassword(String username) {
+        try {
+            Statement statement = connection.createStatement();
+
+            ResultSet result = statement.executeQuery(String.format("SELECT password FROM users WHERE username = '%s';", username));
+            ResultSetMetaData mdata = result.getMetaData();
+
+            int columnsNumber = mdata.getColumnCount();
+            while (result.next()) {
+                for (int i = 1; i <= columnsNumber; i++) {
+                    System.out.print(result.getString(i));
+                    if (i > 1) System.out.print(" | ");
+                }
+            }
+        }
+        catch (Exception exception) {
+            System.out.println(exception);
+
+        }
+    }
+
+    public void close() throws SQLException {
+        connection.close();
+    }
+}
 
 // Account Class: Handles accounts and all information in accounts
 class Account {
@@ -14,6 +198,7 @@ class Account {
     private ArrayList<Channel> admin_list = new ArrayList<>();
     private ReadWriteLock block_lock = new ReentrantReadWriteLock();
     private ArrayList<Account> blocked_users = new ArrayList<>();
+    private Database database;
 
     String username;
     private String email;
@@ -163,6 +348,7 @@ class Account {
         channel.add_account(this);
         return (JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"joinchannel", "success", channel_name}));
     }
+
     //returns true if user is in channel otherwise false
     public boolean is_in_channel(Channel channel){
         channel_lock.readLock().lock();
@@ -474,10 +660,11 @@ class Client extends Thread {
 
 // Server class
 public class JavaServer {
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, SQLException {
         // server is listening on port 4995
         ServerSocket ss = new ServerSocket(4995);
-
+        String dbUrl = "jdbc:mysql://104.154.41.246:3306/CRYPTOCHAT";
+        Database database = new Database(dbUrl, DriverManager.getConnection(dbUrl, "root", "CryptoChat"));
         // running infinite loop for getting
         // client request
         while (true) {
