@@ -1,0 +1,168 @@
+import java.sql.*;
+
+public class getData {
+
+public void getMessage(String sender) {
+	try {
+    
+    //connect to database
+		String dbUrl = "jdbc:mysql://104.154.41.246/CRYPTOCHAT";
+		Connection connection = DriverManager.getConnection(dbUrl, "root", "CryptoChat");
+		Statement statement = connection.createStatement();
+		
+    //qeury
+		ResultSet result = statement.executeQuery("SELECT mText FROM messages WHERE sender = '" + sender + "';");
+    ResultSetMetaData mdata = result.getMetaData();
+    
+    //format and print results
+		int columnsNumber = mdata.getColumnCount();
+	    while (result.next()) {
+	        for (int i = 1; i <= columnsNumber; i++) {
+	            System.out.print(result.getString(i));
+	            if (i > 1) System.out.print(" | ");
+	        }
+	    }
+      
+    //close connection
+		connection.close();
+	
+  }
+	catch (Exception exception) {
+		System.out.println(exception);
+		
+	}
+}
+
+//get date sent from message text
+public void getDateSent(String message) {
+	try {
+		String dbUrl = "jdbc:mysql://104.154.41.246/CRYPTOCHAT";
+		Connection connection = DriverManager.getConnection(dbUrl, "root", "CryptoChat");
+		Statement statement = connection.createStatement();
+
+		ResultSet result = statement.executeQuery("SELECT sendD FROM messages WHERE mText = '" + message + "';");
+		ResultSetMetaData mdata = result.getMetaData();
+    
+		int columnsNumber = mdata.getColumnCount();
+	    while (result.next()) {
+	        for (int i = 1; i <= columnsNumber; i++) {
+	            System.out.print(result.getString(i));
+	            if (i > 1) System.out.print(" | ");
+	        }
+	    }
+		connection.close();
+	
+  }
+	catch (Exception exception) {
+		System.out.println(exception);
+		
+	}
+}
+
+//get time sent from message text
+public void getTimeSent(String message) {
+	try {
+		String dbUrl = "jdbc:mysql://104.154.41.246/CRYPTOCHAT";
+		Connection connection = DriverManager.getConnection(dbUrl, "root", "CryptoChat");
+		Statement statement = connection.createStatement();
+
+		ResultSet result = statement.executeQuery("SELECT sendT FROM messages WHERE mText = '" + message + "';");
+		ResultSetMetaData mdata = result.getMetaData();
+		
+    int columnsNumber = mdata.getColumnCount();
+	    while (result.next()) {
+	        for (int i = 1; i <= columnsNumber; i++) {
+	            System.out.print(result.getString(i));
+	            if (i > 1) System.out.print(" | ");
+	        }
+	    }
+		connection.close();
+    
+	}
+	catch (Exception exception) {
+		System.out.println(exception);
+		
+	}
+}
+//get email from username
+public void getEmail(String user) {
+	try {
+		String dbUrl = "jdbc:mysql://104.154.41.246/CRYPTOCHAT";
+		Connection connection = DriverManager.getConnection(dbUrl, "root", "CryptoChat");
+		Statement statement = connection.createStatement();
+
+		ResultSet result = statement.executeQuery("SELECT email FROM users WHERE username = '" + user + "';");
+		ResultSetMetaData mdata = result.getMetaData();
+    
+		int columnsNumber = mdata.getColumnCount();
+	    while (result.next()) {
+	        for (int i = 1; i <= columnsNumber; i++) {
+	            System.out.print(result.getString(i));
+	            if (i > 1) System.out.print(" | ");
+	        }
+	    }
+
+		connection.close();
+	
+  }
+	catch (Exception exception) {
+		System.out.println(exception);
+		
+	}
+}
+//get username from email
+public void getUsername(String email) {
+	try {
+		String dbUrl = "jdbc:mysql://104.154.41.246/CRYPTOCHAT";
+		Connection connection = DriverManager.getConnection(dbUrl, "root", "CryptoChat");
+		Statement statement = connection.createStatement();
+		
+		ResultSet result = statement.executeQuery("SELECT username FROM users WHERE email = '" + email + "';");
+		ResultSetMetaData mdata = result.getMetaData();
+		int columnsNumber = mdata.getColumnCount();
+	
+    while (result.next()) {
+	        for (int i = 1; i <= columnsNumber; i++) {
+	            System.out.print(result.getString(i));
+	            if (i > 1) System.out.print(" | ");
+	        }
+	    
+	    }
+
+		connection.close();
+	
+  }
+	catch (Exception exception) {
+		System.out.println(exception);
+		
+	}
+}
+
+//get password from username
+public void getPassword(String username) {
+	try {
+		String dbUrl = "jdbc:mysql://104.154.41.246/CRYPTOCHAT";
+		Connection connection = DriverManager.getConnection(dbUrl, "root", "CryptoChat");
+		Statement statement = connection.createStatement();
+		
+		ResultSet result = statement.executeQuery("SELECT password FROM users WHERE username = '" + username + "';");
+		ResultSetMetaData mdata = result.getMetaData();
+		
+    int columnsNumber = mdata.getColumnCount();
+	    while (result.next()) {
+	        for (int i = 1; i <= columnsNumber; i++) {
+	            System.out.print(result.getString(i));
+	            if (i > 1) System.out.print(" | ");
+	        }
+	   }
+     
+		connection.close();
+    
+	}
+	catch (Exception exception) {
+		System.out.println(exception);
+		
+	}
+}
+
+}
