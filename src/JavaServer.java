@@ -3,6 +3,190 @@ import java.util.*;
 import java.net.*;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.sql.*;
+import java.time.*;
+
+class Database {
+    String dbUrl;
+    Connection connection;
+
+    public Database(String dbUrl, Connection connection){
+        this.dbUrl = dbUrl;
+        this.connection = connection;
+    }
+
+    public void insertUserInfo(String username, String email, String password) {
+        try {
+
+            //create and execute statement to add data to user info table
+            Statement statement = this.connection.createStatement();
+            statement.executeUpdate(String.format("INSERT INTO users VALUES ('%s', '%s', '%s')", username, email, password));
+        }
+        catch (Exception exception) {
+            System.out.println(exception);
+        }
+    }
+
+    public void insertMessageInfo(String message, String receiver, String sender) {
+        try {
+
+            //establish time and date when message is sent
+            LocalDate date = LocalDate.now();
+            LocalTime time = LocalTime.now();
+
+            //create and execute statement to add data to message info table
+            Statement statement = connection.createStatement();
+            statement.executeUpdate(String.format("INSERT INTO messages (mText, reciever, sendD, sendT, sender) VALUES ('%s', '%s', '%s', '%s', '%s')", message, receiver, date, time, sender));
+        }
+        catch (Exception exception) {
+            System.out.println(exception);
+
+        }
+    }
+
+    public void getMessage(String sender) {
+        try {
+
+            //connect to database
+            Statement statement = connection.createStatement();
+
+            //qeury
+            ResultSet result = statement.executeQuery(String.format("SELECT mText FROM messages WHERE sender = '%s';", sender));
+            ResultSetMetaData mdata = result.getMetaData();
+
+            //format and print results
+            int columnsNumber = mdata.getColumnCount();
+            while (result.next()) {
+                for (int i = 1; i <= columnsNumber; i++) {
+                    System.out.print(result.getString(i));
+                    if (i > 1) System.out.print(" | ");
+                }
+            }
+        }
+        catch (Exception exception) {
+            System.out.println(exception);
+
+        }
+    }
+
+    //get date sent from message text
+    public void getDateSent(String message) {
+        try {
+            Statement statement = connection.createStatement();
+
+            ResultSet result = statement.executeQuery(String.format("SELECT sendD FROM messages WHERE mText = '%s';", message));
+            ResultSetMetaData mdata = result.getMetaData();
+
+            int columnsNumber = mdata.getColumnCount();
+            while (result.next()) {
+                for (int i = 1; i <= columnsNumber; i++) {
+                    System.out.print(result.getString(i));
+                    if (i > 1) System.out.print(" | ");
+                }
+            }
+
+        }
+        catch (Exception exception) {
+            System.out.println(exception);
+
+        }
+    }
+
+    //get time sent from message text
+    public void getTimeSent(String message) {
+        try {
+            Statement statement = connection.createStatement();
+
+            ResultSet result = statement.executeQuery(String.format("SELECT sendT FROM messages WHERE mText = '%s';", message));
+            ResultSetMetaData mdata = result.getMetaData();
+
+            int columnsNumber = mdata.getColumnCount();
+            while (result.next()) {
+                for (int i = 1; i <= columnsNumber; i++) {
+                    System.out.print(result.getString(i));
+                    if (i > 1) System.out.print(" | ");
+                }
+            }
+
+        }
+        catch (Exception exception) {
+            System.out.println(exception);
+
+        }
+    }
+
+    //get email from username
+    public void getEmail(String user) {
+        try {
+            Statement statement = connection.createStatement();
+
+            ResultSet result = statement.executeQuery(String.format("SELECT email FROM users WHERE username = '%s';", user));
+            ResultSetMetaData mdata = result.getMetaData();
+
+            int columnsNumber = mdata.getColumnCount();
+            while (result.next()) {
+                for (int i = 1; i <= columnsNumber; i++) {
+                    System.out.print(result.getString(i));
+                    if (i > 1) System.out.print(" | ");
+                }
+            }
+        }
+        catch (Exception exception) {
+            System.out.println(exception);
+
+        }
+    }
+
+    //get username from email
+    public void getUsername(String email) {
+        try {
+            Statement statement = connection.createStatement();
+
+            ResultSet result = statement.executeQuery(String.format("SELECT username FROM users WHERE email = '%s';", email));
+            ResultSetMetaData mdata = result.getMetaData();
+            int columnsNumber = mdata.getColumnCount();
+
+            while (result.next()) {
+                for (int i = 1; i <= columnsNumber; i++) {
+                    System.out.print(result.getString(i));
+                    if (i > 1) System.out.print(" | ");
+                }
+
+            }
+
+        }
+        catch (Exception exception) {
+            System.out.println(exception);
+
+        }
+    }
+
+    //get password from username
+    public void getPassword(String username) {
+        try {
+            Statement statement = connection.createStatement();
+
+            ResultSet result = statement.executeQuery(String.format("SELECT password FROM users WHERE username = '%s';", username));
+            ResultSetMetaData mdata = result.getMetaData();
+
+            int columnsNumber = mdata.getColumnCount();
+            while (result.next()) {
+                for (int i = 1; i <= columnsNumber; i++) {
+                    System.out.print(result.getString(i));
+                    if (i > 1) System.out.print(" | ");
+                }
+            }
+        }
+        catch (Exception exception) {
+            System.out.println(exception);
+
+        }
+    }
+
+    public void close() throws SQLException {
+        connection.close();
+    }
+}
 
 // Account Class: Handles accounts and all information in accounts
 class Account {
@@ -14,10 +198,11 @@ class Account {
     private ArrayList<Channel> admin_list = new ArrayList<>();
     private ReadWriteLock block_lock = new ReentrantReadWriteLock();
     private ArrayList<Account> blocked_users = new ArrayList<>();
+    private Database database;
 
     String username;
-    String email;
-    String password;
+    private String email;
+    private String password;
 
     private Account(String username, String email, String password){
         this.username = username;
@@ -130,7 +315,7 @@ class Account {
 
     //checks that user is in the channel then the channel is added to admin_list
     public boolean make_user_admin(Channel channel){
-        if(!this.is_in_channel(channel))
+        if(!this.is_in_channel(channel) || channel.is_admin(this))
             return false;
         admin_lock.writeLock().lock();
         try {
@@ -151,7 +336,7 @@ class Account {
         Channel channel = Channel.get_channel(channel_name);
         if (channel == null)
             return (JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"joinchannel", "failure", channel_name, channel_name + " does not exist"}));
-        if (channel.password != password)
+        if (!channel.password.equals(password))
             return (JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"joinchannel", "failure", channel_name, channel_name + "'s password does not match"}));
         channel_lock.writeLock().lock();
         try {
@@ -163,6 +348,7 @@ class Account {
         channel.add_account(this);
         return (JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"joinchannel", "success", channel_name}));
     }
+
     //returns true if user is in channel otherwise false
     public boolean is_in_channel(Channel channel){
         channel_lock.readLock().lock();
@@ -188,6 +374,8 @@ class Channel {
     private static ArrayList<Channel> channel_list = new ArrayList<>();
     private ReadWriteLock account_lock = new ReentrantReadWriteLock();
     private ArrayList<Account> account_list = new ArrayList<>();
+    private ReadWriteLock admin_lock = new ReentrantReadWriteLock();
+    private ArrayList<Account> admin_list = new ArrayList<>();
     String channel_name;
     String password;
 
@@ -202,13 +390,11 @@ class Channel {
             channel_lock.writeLock().unlock();
         }
 
-        ReadWriteLock admin_lock = new ReentrantReadWriteLock();
-        admin_lock.writeLock().lock();
+        this.admin_lock.writeLock().lock();
         try {
-            ArrayList<Account> admin_list = new ArrayList<>();
-            admin_list.add(admin);
+            this.admin_list.add(admin);
         } finally {
-            admin_lock.writeLock().unlock();
+            this.admin_lock.writeLock().unlock();
         }
     }
 
@@ -249,17 +435,64 @@ class Channel {
             account_lock.writeLock().unlock();
         }
     }
+
+    private boolean add_admin (Account account){
+        if (this.is_admin(account) || !this.is_in_channel(account))
+            return false;
+        account_lock.writeLock().lock();
+        try {
+            if (account.make_user_admin(this)) {
+                account_list.add(account);
+                return true;
+            }
+            return false;
+        }
+        finally {
+            account_lock.writeLock().unlock();
+        }
+    }
+
+    public boolean is_admin(Account account){
+        admin_lock.readLock().lock();
+        try {
+             return (admin_list.contains(account));
+        }
+        finally {
+            admin_lock.readLock().unlock();
+        }
+    }
+
+    public boolean is_in_channel(Account account){
+        account_lock.readLock().lock();
+        try {
+            return (account_list.contains(account));
+        }
+        finally {
+            account_lock.readLock().unlock();
+        }
+    }
+
+    // Promote account to admin
+    public String promote_user(Account account){
+        if (!this.is_in_channel(account))
+            return (JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"promoteuser", "failure", this.channel_name, account.username + " is not in " + this.channel_name}));
+        if (this.is_admin(account))
+            return (JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"promoteuser", "failure", this.channel_name, account.username + " is already am admin of " + this.channel_name}));
+        this.add_admin(account);
+        Client.send_message(JavaServer.format_message(new int[]{0, 2}, new String[]{"recievedpromoteuser", this.channel_name}), account.username);
+        return (JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"promoteuser", "success", this.channel_name, account.username}));
+    }
 }
 
 // ClientHandler class
 class Client extends Thread {
-    static ReadWriteLock lock = new ReentrantReadWriteLock();
-    static ArrayList<Client> client_list = new ArrayList<>();
-    final DataInputStream dis;
-    final DataOutputStream dos;
-    final Socket s;
-    boolean closed;
-    Account account;
+    private static ReadWriteLock lock = new ReentrantReadWriteLock();
+    private static ArrayList<Client> client_list = new ArrayList<>();
+    private final DataInputStream dis;
+    private final DataOutputStream dos;
+    private final Socket s;
+    private boolean closed;
+    public Account account;
 
     // Constructor
     public Client(Socket s, DataInputStream dis, DataOutputStream dos) {
@@ -310,7 +543,7 @@ class Client extends Thread {
     // reads the message and calls the corresponding method with relevant information
     public void handle_message(String message) {
         String[] split = JavaServer.split_message(message);
-        if (split.length == 0)
+        if (split.length < 2)
             send_message(JavaServer.format_message(new int[]{0, 2}, new String[]{"error", "Incorrect Message Format"}));
         else if (split[0].equals("createaccount") && split.length > 3)
             send_message(Account.create_account(split[1], split[2], split[3]));
@@ -320,7 +553,7 @@ class Client extends Thread {
                 account = Account.get_account(split[1]);
             send_message(result);
         }
-        else if (split[0].equals("logout") && split.length > 1 ){
+        else if (split[0].equals("logout")){
             if (account == null){
                 send_message(JavaServer.format_message(new int[]{0, 1, 2}, new String[]{"logout", "failure", "You are not logged into " + split[1]}));
             }
@@ -338,7 +571,7 @@ class Client extends Thread {
             else
                 send_message(JavaServer.format_message(new int[]{0, 1, 2}, new String[]{"senddirectmessage", "failure", split[1], "Unable to send message to " + split[1]}));
         }
-        else if (split[0].equals("block") && split.length > 1){
+        else if (split[0].equals("block")){
             if (account != null){
                 send_message(JavaServer.format_message(new int[]{0, 1, 2}, new String[]{"block", "failure", split[1], split[2], "You must be logged in"}));
             }
@@ -350,7 +583,7 @@ class Client extends Thread {
             if (account == null){
                 send_message(JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"createchannel", "failure", split[2], "You must be logged in"}));
             }
-            if (split.length == 1)
+            if (split.length == 2)
                 send_message(Channel.create_channel(account, split[1]));
             else
                 send_message(Channel.create_channel(account, split[1], split[2]));
@@ -359,10 +592,29 @@ class Client extends Thread {
             if (account == null){
                 send_message(JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"joinchannel", "failure", split[2], "You must be logged in"}));
             }
-            if (split.length == 1)
+            if (split.length == 2)
                 send_message(account.join_channel(split[1]));
             else
                 send_message(account.join_channel(split[1], split[2]));
+        }
+        else if (split[0].equals("promoteuser") && split.length > 1){
+            Channel channel = Channel.get_channel(split[1]);
+            Account other_user = Account.get_account(split[2]);
+            if (account == null){
+                this.send_message(JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"promoteuser", "failure", split[1], "You are not logged in"}));
+            }
+            if (other_user == null){
+                this.send_message(JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"promoteuser", "failure", split[1], split[2] + " is not a user"}));
+            }
+            else if (channel == null){
+                this.send_message(JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"promoteuser", "failure", split[1], split[1], " is not a channel"}));
+            }
+            else if (!channel.is_admin(account)){
+                this.send_message(JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"promoteuser", "failure", split[1], "You must be an admin of " + split[1]}));
+            }
+            else {
+                this.send_message(channel.promote_user(other_user));
+            }
         }
         else
             send_message(JavaServer.format_message(new int[]{0, 2}, new String[]{"error", "Incorrect Message Format"}));
@@ -378,8 +630,8 @@ class Client extends Thread {
         }
     }
 
-    //Sends a message to another Client
-    public boolean send_message(String message, String username){
+    //Sends a message to another Client with username
+    public static boolean send_message(String message, String username){
         lock.readLock().lock();
         try {
             for (Client client : client_list) {
@@ -408,10 +660,11 @@ class Client extends Thread {
 
 // Server class
 public class JavaServer {
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, SQLException {
         // server is listening on port 4995
         ServerSocket ss = new ServerSocket(4995);
-
+        String dbUrl = "jdbc:mysql://104.154.41.246:3306/CRYPTOCHAT";
+        Database database = new Database(dbUrl, DriverManager.getConnection(dbUrl, "root", "CryptoChat"));
         // running infinite loop for getting
         // client request
         while (true) {
