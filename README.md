@@ -23,7 +23,11 @@ Here's the intro
 * Server:
 * Database:
 ### Run
-
+* Client:
+  1. Click run on the IDE
+  2. Navigate using the labelled buttons
+* Server:
+* Database:
 
 ## Demo video
 
