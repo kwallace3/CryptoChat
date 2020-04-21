@@ -486,13 +486,13 @@ class Channel {
 
 // ClientHandler class
 class Client extends Thread {
-    static ReadWriteLock lock = new ReentrantReadWriteLock();
-    static ArrayList<Client> client_list = new ArrayList<>();
-    final DataInputStream dis;
-    final DataOutputStream dos;
-    final Socket s;
-    boolean closed;
-    Account account;
+    private static ReadWriteLock lock = new ReentrantReadWriteLock();
+    private static ArrayList<Client> client_list = new ArrayList<>();
+    private final DataInputStream dis;
+    private final DataOutputStream dos;
+    private final Socket s;
+    private boolean closed;
+    public Account account;
 
     // Constructor
     public Client(Socket s, DataInputStream dis, DataOutputStream dos) {
