@@ -564,8 +564,10 @@ class Client extends Thread {
             else
                 send_message(JavaServer.format_message(new int[]{0, 1, 2}, new String[]{"logout", "failure", "You are not logged into " + split[1]}));
         }
-        else if (split[0].equals("senddirectmessage") && split.length > 2 && account != null){
-            if(send_message(JavaServer.format_message(new int[]{0, 2, 2, 3}, new String[]{"receiveddirectmessage", account.username, split[2], split[3]}), split[1])){
+        else if (split[0].equals("senddirectmessage") && split.length >= 2){
+            if (account == null)
+                send_message(JavaServer.format_message(new int[]{0, 1, 2, 2}, new String[]{"senddirectmessage", "failure", split[1], "You must be logged in to send a direct message"}));
+            else if(send_message(JavaServer.format_message(new int[]{0, 2, 2, 3}, new String[]{"receiveddirectmessage", account.username, split[2], split[3]}), split[1])){
                 send_message(JavaServer.format_message(new int[]{0, 1, 2}, new String[]{"senddirectmessage", "success", split[1]}));
             }
             else

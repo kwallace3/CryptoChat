@@ -4,7 +4,7 @@ import java.io.*;
 class TestClient{
     public static void main(String args[])throws Exception{
         // Socket s=new Socket("localhost",4995);
-        Socket s=new Socket("cryptochatwit.duckdns.org",4995);
+        Socket s=new Socket("localhost",4995);
         DataInputStream din=new DataInputStream(s.getInputStream());
         DataOutputStream dout=new DataOutputStream(s.getOutputStream());
         BufferedReader br=new BufferedReader(new InputStreamReader(System.in));
