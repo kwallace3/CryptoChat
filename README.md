@@ -16,12 +16,12 @@ Here's the intro
 
 ### Installation and Setup
 * CLient:
-  1.Unzip CLient.zip
-  2.In Compiler Select import project
-  3.Follow the steps of import wizard
-  4.click run
-*Server:
-*Database:
+  1. Unzip CLient.zip
+  2. In Compiler Select import project
+  3. Follow the steps of import wizard
+  4. click run
+* Server:
+* Database:
 ### Run
 
 
