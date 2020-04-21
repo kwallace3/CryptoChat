@@ -1,7 +1,8 @@
+//methods for server to query database for message/user info
+
 import java.sql.*;
 
 public class getData {
-
 public void getMessage(String sender) {
 	try {
     
