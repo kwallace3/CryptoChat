@@ -1,13 +1,22 @@
+
+
+
+USE CRYPTOCHAT;
+
+-- stores username, email, and password of user
 CREATE TABLE IF NOT EXISTS users (
-username VARCHAR(10),
-email VARCHAR(30),
-pass VARCHAR(10)
+  username VARCHAR(10),
+  email VARCHAR(30),
+  pass VARCHAR(10)
 );
+
+-- stores text, receiver username, sender username, date, and time sent for messages
 CREATE TABLE IF NOT EXISTS messages (
-mText VARCHAR(100),
-userR VARCHAR(10),
-sendD DATE,
-sendT TIME
+  mText VARCHAR(100),
+  username VARCHAR(10),
+  sender VARCHAR(10),
+  sendD VARCHAR(10),
+  sendT VARCHAR(8)
 );
 
 SHOW TABLES;
