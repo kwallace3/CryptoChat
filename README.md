@@ -16,8 +16,8 @@ Here's the intro
 
 ### Installation and Setup
 * Client:
-  1. Unzip CLient.zip
-  2. In Compiler Select import project
+  1. Unzip Client.zip
+  2. In Android Studio Select import project
   3. Follow the steps of import wizard
   4. click run
 * Server:
