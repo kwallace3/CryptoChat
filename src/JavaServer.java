@@ -663,8 +663,8 @@ public class JavaServer {
     public static void main(String[] args) throws IOException, SQLException {
         // server is listening on port 4995
         ServerSocket ss = new ServerSocket(4995);
-        String dbUrl = "jdbc:mysql://104.154.41.246:3306/CRYPTOCHAT";
-        Database database = new Database(dbUrl, DriverManager.getConnection(dbUrl, "root", "CryptoChat"));
+        /*String dbUrl = "jdbc:mysql://104.154.41.246:3306/CRYPTOCHAT";
+        Database database = new Database(dbUrl, DriverManager.getConnection(dbUrl, "root", "CryptoChat"));*/
         // running infinite loop for getting
         // client request
         while (true) {
