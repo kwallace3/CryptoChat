@@ -1,8 +1,8 @@
-# CryptoChat™
+# CryptoChat
 
 ## Introduction
 
-Here's the intro
+Our project is an encrypted chat app. The app is available for android devices only. It utilizes a server and database for network accessibility and record keeping respectively.
 
 ## Features
 * Multiple channels
@@ -35,4 +35,7 @@ Here's the intro
 
 ## Contributors
 
-* Brian Zschau, Kevin Channing, James Brennan, Katrina Wallace
+* Brian Zschau, Team Lead
+* Kevin Channing, Deverloper
+* James Brennan, Developer
+* Katrina Wallace, Developer
