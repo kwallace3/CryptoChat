@@ -20,19 +20,17 @@ Our project is an encrypted chat app. The app is available for android devices o
   2. In Android Studio Select import project
   3. Follow the steps of import wizard
   4. click run
-* Server:
-* Database:
+
 ### Run
 * Client:
   1. Click run on the IDE
   2. Navigate using the labelled buttons
 * Server:
   1. Run the JavaServer.java in the IDE making sure that port 4995 is accessible to the client
-* Database:
 
 ## Demo video
 
-
+Demo video link: https://youtu.be/LRa4qIZdQ10
 
 ## Contributors
 
