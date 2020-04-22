@@ -27,6 +27,7 @@ Our project is an encrypted chat app. The app is available for android devices o
   1. Click run on the IDE
   2. Navigate using the labelled buttons
 * Server:
+  1. Run the JavaServer.java in the IDE making sure that port 4995 is accessible to the client
 * Database:
 
 ## Demo video
@@ -36,6 +37,6 @@ Our project is an encrypted chat app. The app is available for android devices o
 ## Contributors
 
 * Brian Zschau, Team Lead
-* Kevin Channing, Deverloper
+* Kevin Channing, Developer
 * James Brennan, Developer
 * Katrina Wallace, Developer
